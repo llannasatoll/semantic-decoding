@@ -1,6 +1,8 @@
 import os
 import numpy as np
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+
 # paths
 
 REPO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,10 +19,10 @@ TRIM = 5
 STIM_DELAYS = [1, 2, 3, 4]
 RESP_DELAYS = [-4, -3, -2, -1]
 ALPHAS = np.logspace(1, 3, 10)
-NBOOTS = 50
+NBOOTS = 15
 VOXELS = 10000
 CHUNKLEN = 40
-GPT_LAYER = 9
+GPT_LAYER = 10
 GPT_WORDS = 5
 
 # decoder parameters
