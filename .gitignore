@@ -1,9 +1,11 @@
-ds003020-*.sh
+ds00*.sh
 models/
 llama/
-data/train/
-data/test/
-data/lm/
+data_train/
+data_test/
+data_lm/
+results/
 .env
 __MACOSX
+__pycache__
 poetry.lock
