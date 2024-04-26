@@ -5,6 +5,14 @@ import logging
 from utils_ridge.utils import mult_diag, counter
 import random
 import itertools as itools
+import datetime
+from sklearn.linear_model import Ridge
+from scipy.stats import pearsonr
+
+import matplotlib
+matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
 
 zs = lambda v: (v-v.mean(0))/v.std(0) ## z-score function
 
@@ -179,10 +187,39 @@ def ridge_corr(Rstim, Pstim, Rresp, Presp, alphas, normalpha=False, dtype=np.sin
             logger.info(log_msg)
         else:
             print (log_msg)
-    
     return Rcorrs
 
-def bootstrap_ridge(Rstim, Rresp, alphas, nboots, chunklen, nchunks, dtype=np.single,
+def my_ridge_corr(Rstim, Pstim, Rresp, Presp, alphas, normalpha=False, dtype=np.single, corrmin=0.2,
+                singcutoff=1e-10, use_corr=True, logger=logging.getLogger("ridge_corr")):
+    ## Calculate SVD of stimulus matrix
+    logger.info("Doing SVD...")
+
+    nalphas = alphas
+    Rcorrs = [] ## Holds training correlations for each alpha
+    for na, a in zip(nalphas, alphas):
+        clf = Ridge(alpha=a)
+        clf.fit(Rstim, Rresp)
+        pred = clf.predict(Pstim)
+
+        # ボクセルごとに相関を求める
+        Rcorr = np.array([pearsonr(Presp[:, j], pred[:, j])[0] for j in range(Presp.shape[1])])
+
+        Rcorr[np.isnan(Rcorr)] = 0
+        Rcorrs.append(Rcorr)
+
+        log_template = "Training: alpha=%0.3f, mean corr=%0.5f, max corr=%0.5f, over-under(%0.2f)=%d"
+        log_msg = log_template % (a,
+                                  np.mean(Rcorr),
+                                  np.max(Rcorr),
+                                  corrmin,
+                                  (Rcorr>corrmin).sum()-(-Rcorr>corrmin).sum())
+        if logger is not None:
+            logger.info(log_msg)
+        else:
+            print (log_msg)
+    return Rcorrs
+
+def bootstrap_ridge(Rstim, Rresp, Pstim, Presp, alphas, nboots, chunklen, nchunks, dtype=np.single,
                     corrmin=0.2, joined=None, singcutoff=1e-10, normalpha=False, single_alpha=False,
                     use_corr=True, logger=logging.getLogger("ridge_corr")):
     """Uses ridge regression with a bootstrapped held-out set to get optimal alpha values for each response.
@@ -279,37 +316,24 @@ def bootstrap_ridge(Rstim, Rresp, alphas, nboots, chunklen, nchunks, dtype=np.si
         PRresp = Rresp[heldinds,:]
         
         ## Run ridge regression using this test set
-        Rcmat = ridge_corr(RRstim, PRstim, RRresp, PRresp, alphas,
+        Rcmat = my_ridge_corr(RRstim, PRstim, RRresp, PRresp, alphas,
                            dtype=dtype, corrmin=corrmin, singcutoff=singcutoff,
-                           normalpha=normalpha, use_corr=use_corr)
+                           normalpha=normalpha, use_corr=use_corr, logger=logger)
         
         Rcmats.append(Rcmat)
-    
-    ## Find weights for each voxel
-    try:
-        U,S,Vh = np.linalg.svd(Rstim, full_matrices=False)
-    except np.linalg.LinAlgError as e:
-        logger.info("NORMAL SVD FAILED, trying more robust dgesvd..")
-        from text.regression.svd_dgesvd import svd_dgesvd
-        U,S,Vh = svd_dgesvd(Rstim, full_matrices=False)
 
     ## Normalize alpha by the Frobenius norm
-    #frob = np.sqrt((S**2).sum()) ## Frobenius!
-    frob = S[0]
-    #frob = S.sum()
-    logger.info("Total training stimulus has Frobenius norm: %0.03f"%frob)
-    if normalpha:
-        nalphas = alphas * frob
-    else:
-        nalphas = alphas
+    nalphas = alphas
 
     allRcorrs = np.dstack(Rcmats)
+    logger.info("allRcorrs.shape : %s" % str(allRcorrs.shape))
     if not single_alpha:
         logger.info("Finding best alpha for each response..")
         if joined is None:
             ## Find best alpha for each voxel
             meanbootcorrs = allRcorrs.mean(2)
             bestalphainds = np.argmax(meanbootcorrs, 0)
+            bestcorr = np.max(meanbootcorrs, 0)
             valphas = nalphas[bestalphainds]
         else:
             ## Find best alpha for each group of voxels
@@ -327,11 +351,33 @@ def bootstrap_ridge(Rstim, Rresp, alphas, nboots, chunklen, nchunks, dtype=np.si
         logger.info("Best alpha = %0.3f"%bestalpha)
 
     logger.info("Computing weights for each response using entire training set..")
-    UR = np.dot(U.T, np.nan_to_num(Rresp))
-    wt = np.zeros((Rstim.shape[1], Rresp.shape[1]))
-    for ai,alpha in enumerate(nalphas):
-        selvox = np.nonzero(valphas==alpha)[0]
-        awt = reduce(np.dot, [Vh.T, np.diag(S/(S**2+alpha**2)), UR[:,selvox]])
-        wt[:,selvox] = awt
 
-    return wt, valphas, allRcorrs
+    dt_now = datetime.datetime.now()
+    log_template = "mean corr=%0.5f, max corr=%0.5f, %s"
+    log_msg = log_template % (np.mean(bestcorr), np.max(bestcorr), dt_now.strftime('%Y%m%d%H%M%S'))
+    if logger is not None:
+        logger.info(log_msg)
+    else:
+        print(log_msg)
+
+    plt.hist(bestcorr, bins=40)
+    plt.savefig("/home/anna/semantic-decoding/results/performance_logs/bestalphas_%s.png" % dt_now.strftime('%Y%m%d%H%M%S'))
+    plt.close()
+
+    ## Find weights for each voxel
+    # clf = Ridge(alpha=alphas[0])
+    clf = Ridge(alpha=valphas)
+    clf.fit(Rstim, Rresp)
+    pred = clf.predict(Pstim)
+    Rcorr = np.array([pearsonr(Presp[:, j], pred[:, j])[0] for j in range(Presp.shape[1])])
+    Rcorr[np.isnan(Rcorr)] = 0
+
+    log_template = "mean corr=%0.5f, max corr=%0.5f, %s"
+    log_msg = log_template % (np.mean(Rcorr), np.max(Rcorr), dt_now.strftime('%Y%m%d%H%M%S'))
+    logger.info(log_msg)
+
+    plt.hist(Rcorr, bins=40)
+    plt.savefig("/home/anna/semantic-decoding/results/performance_logs/test_%s.png" % dt_now.strftime('%Y%m%d%H%M%S'))
+    plt.close()
+
+    return Rcorr, valphas, dt_now.strftime('%Y%m%d%H%M%S')

@@ -1,17 +1,22 @@
 import torch
 import numpy as np
-from transformers import AutoModelForCausalLM
+from transformers import AutoModel, AutoTokenizer
 from torch.nn.functional import softmax
 
 class GPT():    
     """wrapper for https://huggingface.co/openai-gpt
     """
-    def __init__(self, path, vocab, device = 'cpu'): 
+    def __init__(self, path, device = 'cpu'):
         self.device = device
-        self.model = AutoModelForCausalLM.from_pretrained(path).eval().to(self.device)
-        self.vocab = vocab
-        self.word2id = {w : i for i, w in enumerate(self.vocab)}
-        self.UNK_ID = self.word2id['<unk>']
+        self.path = path
+        if path != 'eng1000':
+            self.model = AutoModel.from_pretrained(path, device_map="balanced")#.eval().to(self.device)
+            tokenizer = AutoTokenizer.from_pretrained(path)
+            self.word2id = tokenizer.vocab
+            if tokenizer.unk_token == '':
+                self.UNK_ID = -1
+            else:
+                self.UNK_ID = tokenizer.encode(tokenizer.unk_token)[0]
 
     def encode(self, words):
         """map from words to ids

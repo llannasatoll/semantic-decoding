@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "semantic-decoding"
+version = "0.1.0"
+description = ""
+authors = ["Anna Sato <g1920519@is.ocha.ac.jp>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.26.4"
+torch = "^2.2.2"
+transformers = "^4.40.1"
+tables = "^3.9.2"
+scipy = "^1.13.0"
+matplotlib = "^3.8.4"
+h5py = "^3.11.0"
+scikit-learn = "^1.4.2"
+huggingface-hub = "^0.22.2"
+accelerate = "^0.29.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

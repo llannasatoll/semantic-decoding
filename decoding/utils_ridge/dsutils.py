@@ -79,6 +79,29 @@ def histogram_phonemes2(ds, phonemeset=phonemes):
     newdata = np.vstack([olddata==ph for ph in phonemeset]).T
     return DataSequence(newdata, ds.split_inds, ds.data_times, ds.tr_times)
 
+def make_semantic_model_old(ds: DataSequence, lsasms: list, sizes: list):
+    """
+    ds
+        datasequence to operate on
+    lsasms
+        semantic models to use
+    sizes
+        sizes of resulting vectors from each semantic model
+    """
+    newdata = []
+    num_lsasms = len(lsasms)
+    for w in ds.data:
+        v = []
+        for i in range(num_lsasms):
+            lsasm = lsasms[i]
+            size = sizes[i]
+            try:
+                v = np.concatenate((v, lsasm[str.encode(w.lower())]))
+            except KeyError as e:
+                v = np.concatenate((v, np.zeros((size)))) #lsasm.data.shape[0],))
+        newdata.append(v)
+    return DataSequence(np.array(newdata), ds.split_inds, ds.data_times, ds.tr_times)
+
 def make_semantic_model(ds, lsasm):
     newdata = []
     for w in ds.data:
