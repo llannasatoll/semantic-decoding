@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # model_path = 'meta-llama/Meta-Llama-3-8B'
     gpt = GPT(path = model_path, device = config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
-    
+
     # estimate encoding model
     rstim, tr_stats = get_stim(stories, features)
     rresp = get_resp(args.subject, stories, stack = True)
@@ -99,9 +99,8 @@ if __name__ == "__main__":
     np.savez(os.path.join(save_location, "encoding_model_result_%s" % timestamp),
         corr = Rcorr, stories = stories, alpha=valphas, model_path=model_path,
         layer=config.GPT_LAYER, train_stories=stories, test_stories=test_stories)
-
     exit()
-
+    '''
     bscorrs = bscorrs.mean(2).max(0)
     vox = np.sort(np.argsort(bscorrs)[-config.VOXELS:])
     del rstim, rresp
@@ -125,3 +124,4 @@ if __name__ == "__main__":
     np.savez(os.path.join(save_location, "encoding_model_%s" % args.gpt), 
         weights = weights, noise_model = noise_model, alphas = alphas, voxels = vox, stories = stories,
         tr_stats = np.array(tr_stats), word_stats = np.array(word_stats))
+    '''

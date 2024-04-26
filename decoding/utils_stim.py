@@ -26,12 +26,12 @@ def get_stim(stories, features, tr_stats = None):
     if features.model.path == 'eng1000':
         ds_vecs = get_feature_space('eng1000', stories) # add sentence
     else:
-        ds_vecs = {story : lanczosinterp2D(word_vecs[story], word_seqs[story].data_times, word_seqs[story].tr_times)
-            for story in stories}
         word_seqs = get_story_wordseqs(stories)
         word_vecs = {story : features.make_stim(word_seqs[story].data) for story in stories}
         word_mat = np.vstack([word_vecs[story] for story in stories])
         word_mean, word_std = word_mat.mean(0), word_mat.std(0)
+        ds_vecs = {story : lanczosinterp2D(word_vecs[story], word_seqs[story].data_times, word_seqs[story].tr_times)
+            for story in stories}
 
     ds_mat = np.vstack([ds_vecs[story][5+config.TRIM:-config.TRIM] for story in stories])
     if tr_stats is None:
