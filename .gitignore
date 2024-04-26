@@ -1,0 +1,9 @@
+ds003020-*.sh
+models/
+llama/
+data/train/
+data/test/
+data/lm/
+.env
+__MACOSX
+poetry.lock
