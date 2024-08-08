@@ -53,5 +53,6 @@ MODELS = {
     'llama3' : 'meta-llama/Meta-Llama-3-8B',
     'embed_small' : 'text-embedding-3-small',
     'embed_large' : 'text-embedding-3-large',
-    'original' : 'original',
+    'original' : os.path.join(DATA_LM_DIR, "perceived", "model"),
+    "deberta_xxlarge": "microsoft/deberta-v2-xxlarge"
 }

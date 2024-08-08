@@ -25,7 +25,7 @@ class GPT():
         self.path = path
         if path == 'eng1000':
             pass
-        elif path == os.path.join(config.DATA_LM_DIR, "perceived", "model") or path == "original":
+        elif path == config.MODELS["original"]:
             with open(os.path.join(config.DATA_LM_DIR, "perceived", "vocab.json"), "r") as f:
                 vocab = json.load(f)
             self.model = AutoModelForCausalLM.from_pretrained(os.path.join(config.DATA_LM_DIR, "perceived", "model")).eval().to(self.device)
@@ -33,14 +33,9 @@ class GPT():
             self.word2id = {w : i for i, w in enumerate(self.vocab)}
             self.UNK_ID = self.word2id['<unk>']
         else:
-            self.model = AutoModelForCausalLM.from_pretrained(path, device_map="balanced")#.eval().to(self.device)
+            self.model = AutoModel.from_pretrained(path, device_map="balanced")
             self.tokenizer = AutoTokenizer.from_pretrained(path)
-            # self.UNK_ID = tokenizer.unk_token_id
-            # self.UNK_ID = -1 if tokenizer.unk_token is None else tokenizer.encode(tokenizer.unk_token)[0]
             if self.tokenizer.unk_token is None:
-                # _ = self.tokenizer.add_tokens('<|unk|>', special_tokens=True)
-                # self.UNK_ID = len(self.tokenizer) - 1
-                # self.model.resize_token_embeddings(len(self.tokenizer))
                 self.UNK_ID = 0
             else:
                 self.UNK_ID = self.tokenizer.encode(self.tokenizer.unk_token)[0]
@@ -52,7 +47,6 @@ class GPT():
         i_i = 0
         for w_i in range(len(words)):
             c = 1
-            # print(words[w_i], w_i)
             if self.path == 'meta-llama/Meta-Llama-3-8B' and ids[i_i] == 128000:
                 wordind2tokind.append(w_i)
                 i_i += 1
@@ -74,12 +68,11 @@ class GPT():
     def encode(self, words, mark = ' ', old_tokeni=True):
         """map from words to ids
         """
-        if self.path in [os.path.join(config.DATA_LM_DIR, "perceived", "model"), "original"] :
+        if self.path == config.MODELS["original"]:
             return [self.word2id[x] if x in self.word2id else self.UNK_ID for x in words], list(range(len(words)))
 
         if not old_tokeni:
             return self.tokenizer.encode(mark.join(words), max_length=5000)
-        # return [self.word2id[x] if x in self.word2id else self.UNK_ID for x in words]
 
         i = 0
         wordind2tokind = []
@@ -148,37 +141,28 @@ class GPT():
         assert len(ids) == len(wordind2tokind), f"{len(ids)} != {len(wordind2tokind)}"
         return ids, wordind2tokind
     
-    def generate(self, sentence, max_new_tokens, num_smaple, do_sample=False):
-        if self.path in [os.path.join(config.DATA_LM_DIR, "perceived", "model"), "original"] :
+    def generate(self, sentence, max_new_tokens, num_sample, do_sample=False):
+        if self.path == config.MODELS["original"]:
             tok = {'input_ids': torch.tensor(self.encode(sentence.split(" "))[0]).reshape(1,-1)}
             tok['attention_mask'] = torch.ones_like(tok["input_ids"])
         else:
             tok = self.tokenizer(sentence, return_tensors="pt")
-        if do_sample:
-            outputs = self.model.generate(
-                input_ids = tok['input_ids'].to(config.GPT_DEVICE),
-                attention_mask = tok['attention_mask'].to(config.GPT_DEVICE),
-                max_length = tok['input_ids'].shape[-1] + max_new_tokens,
-                do_sample = do_sample,
-                repetition_penalty = 2.0,
-                num_return_sequences = num_smaple,
-                # bad_words_ids = [[128001]], #[[self.tokenizer.eos_token_id]],
-                # pad_token_id = self.tokenizer.eos_token_id
-            )
-        else:
-            outputs = self.model.generate(
-                input_ids = tok['input_ids'].to(config.GPT_DEVICE),
-                attention_mask = tok['attention_mask'].to(config.GPT_DEVICE),
-                max_length = tok['input_ids'].shape[-1] + max_new_tokens,
-                do_sample = False,
-                num_beams=100,            # ビームサーチの探索幅
-                diversity_penalty=1.0,    # 生成結果の多様性を生み出すためのペナルティ
-                num_beam_groups=100, 
-                repetition_penalty = 2.0,
-                num_return_sequences = num_smaple,
-                # bad_words_ids = [[128001]], #[[self.tokenizer.eos_token_id]],
-                # pad_token_id = self.tokenizer.eos_token_id
-            )
+        kwargs = {
+            "input_ids" : tok['input_ids'].to(config.GPT_DEVICE),
+            "attention_mask" : tok['attention_mask'].to(config.GPT_DEVICE),
+            "max_length" : tok['input_ids'].shape[-1] + max_new_tokens,
+            "repetition_penalty" : 2.0,
+            "num_return_sequences" : num_sample,
+            "do_sample" : do_sample,
+        }
+        if not do_sample:
+            kwargs["diversity_penalty"] = 1.0
+            kwargs["num_beam_groups"] = 100
+            kwargs["num_beams"] = 100
+        if self.path != config.MODELS["original"]:
+            kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
+            kwargs["pad_token_id"] = self.tokenizer.eos_token_id
+        outputs = self.model.generate(**kwargs)
         return outputs
 
     def get_story_array(self, words, context_words, mark=' ', old_tokeni=True):

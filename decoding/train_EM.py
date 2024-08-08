@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--llm", type = str, required = True)
+    parser.add_argument("--layer", type = int, required = True)
     parser.add_argument("--embedding", action='store_true')
     parser.add_argument("--sessions", nargs = "+", type = int, 
         default = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20])
@@ -47,7 +48,7 @@ if __name__ == "__main__":
     else:
         # load gpt
         gpt = GPT(path = config.MODELS[args.llm], device = config.GPT_DEVICE)
-        features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
+        features = LMFeatures(model = gpt, layer = args.layer, context_words = config.GPT_WORDS)
         rstim, tr_stats = get_stim(stories, features)
         pstim, tr_stats = get_stim(test_stories, features)
 
