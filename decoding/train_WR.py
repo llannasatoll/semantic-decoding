@@ -31,13 +31,6 @@ if __name__ == "__main__":
         default = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20])
     args = parser.parse_args()
 
-    models = {
-        'eng1000' : 'eng1000',
-        'gpt2' : 'openai-community/gpt2',
-        'llama3' : 'meta-llama/Meta-Llama-3-8B',
-        'original' : 'original',
-    }
-
     # training stories
     stories = []
     with open(os.path.join(config.DATA_TRAIN_DIR, "sess_to_story.json"), "r") as f:
@@ -54,7 +47,7 @@ if __name__ == "__main__":
     save_location = os.path.join(config.MODEL_DIR, args.subject)
     os.makedirs(save_location, exist_ok = True)
     
-    gpt = GPT(path = models[args.llm], device = config.GPT_DEVICE)
+    gpt = GPT(path = config.MODELS[args.llm], device = config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = 0, context_words = -1)
 
     wordseqs = get_story_wordseqs(stories)
@@ -101,4 +94,4 @@ if __name__ == "__main__":
         save_location = os.path.join(config.RESULT_DIR, args.subject, "test", args.llm)
         os.makedirs(save_location, exist_ok = True)
         np.savez(os.path.join(save_location, "wordrate_model_%s" % timestamp),
-            corr = Rcorr, alpha=valphas, train_stories=stories, roi=roi, model_path=models[args.llm])
+            corr = Rcorr, alpha=valphas, train_stories=stories, roi=roi, model_path=config.MODELS[args.llm])

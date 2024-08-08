@@ -10,17 +10,9 @@ from GPT import GPT
 from StimulusModel import LMFeatures
 from utils_stim import get_stim, get_embedding
 from utils_resp import get_resp
-from utils_ridge.ridge import ridge, bootstrap_ridge
+from utils_ridge.ridge import bootstrap_ridge
 
 np.random.seed(42)
-models = {
-    'eng1000' : 'eng1000',
-    'gpt2' : 'openai-community/gpt2',
-    'llama3' : 'meta-llama/Meta-Llama-3-8B',
-    'embed_small' : 'text-embedding-3-small',
-    'embed_large' : 'text-embedding-3-large',
-    'original' : 'original',
-}
 
 if __name__ == "__main__":
 
@@ -47,14 +39,14 @@ if __name__ == "__main__":
     test_stories = ['wheretheressmoke']
 
     if args.embedding:
-        logger.info(f"Get embedding : {models[args.llm]}")
-        rstim = get_embedding(stories, models[args.llm])
-        pstim = get_embedding(test_stories, models[args.llm])
+        logger.info(f"Get embedding : {config.MODELS[args.llm]}")
+        rstim = get_embedding(stories, config.MODELS[args.llm])
+        pstim = get_embedding(test_stories, config.MODELS[args.llm])
         rstim = (rstim - rstim.mean(axis=0)) / rstim.std(axis=0)
         pstim = (pstim - rstim.mean(axis=0)) / rstim.std(axis=0)
     else:
         # load gpt
-        gpt = GPT(path = models[args.llm], device = config.GPT_DEVICE) # もどす
+        gpt = GPT(path = config.MODELS[args.llm], device = config.GPT_DEVICE)
         features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
         rstim, tr_stats = get_stim(stories, features)
         pstim, tr_stats = get_stim(test_stories, features)
@@ -77,5 +69,5 @@ if __name__ == "__main__":
     save_location = os.path.join(config.RESULT_DIR, args.subject, "test", args.llm)
     os.makedirs(save_location, exist_ok = True)
     np.savez(os.path.join(save_location, "encoding_model_%s" % timestamp),
-        corr = Rcorr, alpha=valphas, model_path=models[args.llm],
+        corr = Rcorr, alpha=valphas, model_path=config.MODELS[args.llm],
         layer=config.GPT_LAYER, train_stories=stories)

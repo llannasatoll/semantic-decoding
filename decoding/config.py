@@ -46,3 +46,12 @@ WINDOW = 20
 GPT_DEVICE = "cuda"
 EM_DEVICE = "cuda"
 SM_DEVICE = "cuda"
+
+MODELS = {
+    'eng1000' : 'eng1000',
+    'gpt2' : 'openai-community/gpt2',
+    'llama3' : 'meta-llama/Meta-Llama-3-8B',
+    'embed_small' : 'text-embedding-3-small',
+    'embed_large' : 'text-embedding-3-large',
+    'original' : 'original',
+}
