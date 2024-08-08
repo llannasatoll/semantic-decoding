@@ -1,0 +1,16 @@
+ds00*.sh
+models/
+llama/
+data_train/
+data_test/
+data_lm/
+results/
+.env
+.ipynb_checkpoints
+__MACOSX
+__pycache__
+poetry.lock
+pyproject.toml
+tmp*.txt
+tmp/
+*.ipynb
