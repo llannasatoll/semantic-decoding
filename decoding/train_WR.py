@@ -9,7 +9,7 @@ import config
 from GPT import GPT
 from StimulusModel import LMFeatures
 
-from utils_stim import get_story_wordseqs, get_punc_script
+from utils_stim import get_story_wordseqs
 from utils_resp import get_resp
 from utils_ridge.DataSequence import DataSequence
 from utils_ridge.util import make_delayed
@@ -27,12 +27,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--llm", type = str, required = True)
-    parser.add_argument("--new_tokeni", action='store_true')
     parser.add_argument("--sessions", nargs = "+", type = int, 
         default = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 18, 20])
     args = parser.parse_args()
-
-    old_tokeni = not args.new_tokeni
 
     models = {
         'eng1000' : 'eng1000',
@@ -57,19 +54,13 @@ if __name__ == "__main__":
     save_location = os.path.join(config.MODEL_DIR, args.subject)
     os.makedirs(save_location, exist_ok = True)
     
-    if args.llm == "original":
-        with open(os.path.join(config.DATA_LM_DIR, "perceived", "vocab.json"), "r") as f:
-            gpt_vocab = json.load(f)
-        gpt = GPT(path = os.path.join(config.DATA_LM_DIR, "perceived", "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
-    else:
-        gpt = GPT(path = models[args.llm], device = config.GPT_DEVICE)
+    gpt = GPT(path = models[args.llm], device = config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = 0, context_words = -1)
 
     wordseqs = get_story_wordseqs(stories)
     rates = {}
     for story in stories:
         ds = wordseqs[story]
-        # wordind2tokind = gpt.get_wordind2tokind(get_punc_script(story))
         _, wordind2tokind = features.make_stim(ds.data)
         words = DataSequence(np.ones(len(wordind2tokind)), ds.split_inds, ds.data_times[wordind2tokind], ds.tr_times)
         rates[story] = words.chunksums("lanczos", window = 3)
@@ -83,8 +74,7 @@ if __name__ == "__main__":
     rates = {}
     for story in test_stories:
         ds = wordseqs[story]
-        # wordind2tokind = gpt.get_wordind2tokind(get_punc_script(story))
-        _, wordind2tokind = features.make_stim(ds.data, old_tokeni=old_tokeni)
+        _, wordind2tokind = features.make_stim(ds.data)
         words = DataSequence(np.ones(len(wordind2tokind)), ds.split_inds, ds.data_times[wordind2tokind], ds.tr_times)
         rates[story] = words.chunksums("lanczos", window = 3)
     nz_rate = np.concatenate([rates[story][5+config.TRIM:-config.TRIM] for story in test_stories], axis = 0)
