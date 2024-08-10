@@ -11,9 +11,9 @@ from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from torch.nn.functional import softmax
 
 logger = logging.getLogger("GPT")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setLevel(logging.DEBUG)
+stdout_handler.setLevel(logging.INFO)
 logger.addHandler(stdout_handler)
 torch.backends.cudnn.enabled = False
 
@@ -38,7 +38,7 @@ class GPT():
             self.tokenizer = AutoTokenizer.from_pretrained(path)
             self.UNK_ID = 0 if self.tokenizer.unk_token is None else self.tokenizer.encode(self.tokenizer.unk_token)[0]
             self.word2id = self.tokenizer.vocab
-            self.BOS_ID = self.tokenizer.bos_token
+            # self.BOS_ID = self.tokenizer.bos_token
 
     def get_wordind2tokind(self, words):
         wordind2tokind = []
@@ -92,10 +92,10 @@ class GPT():
                     wordind2tokind.append(i-1)
                     continue
                 logger.debug(f"tok/word : {tok}/{words[i]}")
-                if tok in [' ', ""]:
+                if tok in [' ', "", self.tokenizer.eos_token]:
                     wordind2tokind.append(i-1)
                     continue
-                elif tok in [self.BOS_ID]:
+                elif tok in [self.tokenizer.bos_token]:
                     wordind2tokind.append(i+1)
                     continue
                 # Skip blank in original script
@@ -112,7 +112,7 @@ class GPT():
                 elif tok[0] != ' ':
                     tmp_i = 0
                     # Try to find how many tokens previous continuation
-                    for tmp_i in range(_i-1, max(-1, _i-10), -1):
+                    for tmp_i in range(_i-1, max(-1, _i-6), -1):
                         if self.tokenizer.decode(ids[tmp_i]) == "": continue
                         # For E5 models
                         if words[i] == self.tokenizer.decode(ids[tmp_i:_i+1]): break
@@ -121,7 +121,7 @@ class GPT():
                     # The case where a word is formed
                     if ((' ' if (tmp_i or (words[i-1] == '')) else '') + words[i]) == self.tokenizer.decode(ids[tmp_i:_i+1]) \
                     or words[i] == self.tokenizer.decode(ids[tmp_i:_i+1]) \
-                    or ((self.tokenizer.decode(ids[tmp_i]) == self.BOS_ID) and (words[i] == self.tokenizer.decode(ids[tmp_i+1:_i+1]))):
+                    or ((self.tokenizer.decode(ids[tmp_i]) == self.tokenizer.bos_token) and (words[i] == self.tokenizer.decode(ids[tmp_i+1:_i+1]))):
                         wordind2tokind.append(i)
                         logger.debug(f'FORMED: {words[i]} == {self.tokenizer.decode(ids[tmp_i:_i+1])}')
                         i += 1

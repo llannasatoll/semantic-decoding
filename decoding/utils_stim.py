@@ -46,7 +46,9 @@ def get_stim(stories, features, tr_stats = None, old_tokeni=True):
     else:
         word_seqs = get_story_wordseqs(stories)
         if old_tokeni:
-            word_vecs = {story : features.make_stim(word_seqs[story].data, old_tokeni=old_tokeni) for story in stories}
+            word_vecs, wordind2tokind = {}, {}
+            for story in stories:
+                word_vecs[story], wordind2tokind[story] =  features.make_stim(word_seqs[story].data, old_tokeni=old_tokeni)
         else:
             wordind2tokind = {story: features.model.get_wordind2tokind(get_punc_script(story)) for story in stories}
             word_vecs = {story : features.make_stim(get_punc_script(story), mark = ' ') for story in stories}
