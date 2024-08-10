@@ -54,5 +54,6 @@ MODELS = {
     'embed_small' : 'text-embedding-3-small',
     'embed_large' : 'text-embedding-3-large',
     'original' : os.path.join(DATA_LM_DIR, "perceived", "model"),
-    "deberta_xxlarge": "microsoft/deberta-v2-xxlarge"
+    "deberta_xxlarge": "microsoft/deberta-v2-xxlarge",
+    "e5" : "intfloat/e5-mistral-7b-instruct"
 }

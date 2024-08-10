@@ -88,22 +88,19 @@ class LMFeatures():
         """
         context_array, wordind2tokind, embs = self.model.get_story_array_and_hidden(
             words,
-            self.context_words, 
+            self.context_words,
             layer = self.layer,
-            mark=mark, 
-            old_tokeni=old_tokeni, 
-            )
+            mark=mark,
+            old_tokeni=old_tokeni,
+        )
         if self.context_words == -1:
             return None, wordind2tokind
 
-        # if old_tokeni:
-        #     context_array, wordind2tokind = self.model.get_story_array(words, self.context_words, mark=mark, old_tokeni=old_tokeni)
-        # else:
-        #     context_array = self.model.get_story_array(words, self.context_words, mark=mark)
-        # embs = self.model.get_hidden(context_array, layer = self.layer)
-        if old_tokeni:
-            return np.vstack([embs[0, :self.context_words], 
+        if self.model.is_encoder:
+            return embs[:, 0]
+        elif old_tokeni:
+            return np.vstack([embs[0, :self.context_words],
                 embs[:context_array.shape[0] - self.context_words, self.context_words]]), wordind2tokind
         else:
-            return np.vstack([embs[0, :self.context_words], 
+            return np.vstack([embs[0, :self.context_words],
                 embs[:context_array.shape[0] - self.context_words, self.context_words]])

@@ -17,7 +17,7 @@ from utils_ridge.ridge import bootstrap_ridge
 np.random.seed(42)
 
 if __name__ == "__main__":
-    
+
     logger = logging.getLogger("train_WR")
     logger.setLevel(logging.INFO)
     stdout_handler = logging.StreamHandler(stream=sys.stdout)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     # ROI voxels
     with open(os.path.join(config.DATA_TRAIN_DIR, "ROIs", "%s.json" % args.subject), "r") as f:
         vox = json.load(f)
-            
+
     # estimate word rate model
     save_location = os.path.join(config.MODEL_DIR, args.subject)
     os.makedirs(save_location, exist_ok = True)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     nz_rate = np.nan_to_num(nz_rate).reshape([-1, 1])
     mean_rate = np.mean(nz_rate)
     rate = nz_rate - mean_rate
-    
+
     # rate for test
     wordseqs = get_story_wordseqs(test_stories)
     rates = {}
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     mean_rate = np.mean(nz_rate)
     logger.info(mean_rate)
     rate_test = nz_rate - mean_rate
-    
+
     for roi in ["auditory"]:
         resp = get_resp(args.subject, stories, stack = True, vox = vox[roi])
         resp_test = get_resp(args.subject, test_stories, stack = True, vox = vox[roi])
@@ -89,9 +89,13 @@ if __name__ == "__main__":
         logger.info("chunklen : %d", config.CHUNKLEN)
         logger.info("nchunks : %d", nchunks)
 
-        Rcorr, valphas, timestamp = bootstrap_ridge(delresp, rate, delresp_test, rate_test, use_corr = False,
-            alphas = config.ALPHAS, nboots = config.NBOOTS, chunklen = config.CHUNKLEN, nchunks = nchunks, logger = logger)
+        Rcorr, valphas, timestamp = bootstrap_ridge(
+            delresp, rate, delresp_test, rate_test, use_corr = False, alphas = config.ALPHAS, 
+            nboots = config.NBOOTS, chunklen = config.CHUNKLEN, nchunks = nchunks, logger = logger
+        )
         save_location = os.path.join(config.RESULT_DIR, args.subject, "test", args.llm)
         os.makedirs(save_location, exist_ok = True)
-        np.savez(os.path.join(save_location, "wordrate_model_%s" % timestamp),
-            corr = Rcorr, alpha=valphas, train_stories=stories, roi=roi, model_path=config.MODELS[args.llm])
+        np.savez(
+            os.path.join(save_location, "wordrate_model_%s" % timestamp),
+            corr = Rcorr, alpha=valphas, train_stories=stories, roi=roi, model_path=config.MODELS[args.llm]
+        )

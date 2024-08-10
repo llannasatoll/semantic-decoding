@@ -33,12 +33,6 @@ def get_beginning_info(model_path, fixed):
             raise()
             begin_words = ['<|begin_of_text|>', 'i', ' reached', ' over', ' and', ' secretly', ' und', 'id']
             begin_time = [0,0,1,2,3,4,5,5,6,7,7,8,9,10]
-    elif model_path == "original":
-        if fixed == 15:
-            begin_words = ['i', 'reached', 'over', 'and', 'secretly', 'undid', 'my', 'seatbelt', 'and', 'when', 'his', 'foot', 'hit', 'the', 'brake', 'at', 'the', 'red', 'light', 'i', 'flung', 'open', 'the', 'door', 'and', 'i', 'ran', 'i', 'had', 'no', 'shoes', 'on', 'i', 'was', 'crying', 'i', 'had', 'no']
-            begin_time = list(range(len(begin_words)))
-        elif fixed == 3:
-            raise()
     return begin_words, begin_time
     
 if __name__ == "__main__":
@@ -70,7 +64,7 @@ if __name__ == "__main__":
         gpt.model.generation_config.pad_token_id = gpt.tokenizer.pad_token_id  
         gpt.tokenizer.pad_token_id = gpt.tokenizer.eos_token_id
     features = LMFeatures(model = gpt, layer = em_data['layer'], context_words = -1)
-    
+
     # Load and construct word rate model
     logger.info("Creating word rate model")
     resp, rate, mean_wordrate = get_wr_feature_pair(args.subject, wr_data['train_stories'], features, str(wr_data['roi']))
@@ -96,7 +90,7 @@ if __name__ == "__main__":
     del wordvec, resp
     torch.cuda.empty_cache()
 
-    fixed = 15 # sec
+    fixed = 11 # sec
     unfixed_tr = int((17-fixed)/2) + 1
     word_seqs = get_story_wordseqs(test_stories)
     word_rates = np.insert(word_rates, 0, [mean_wordrate for _ in range(unfixed_tr)])
@@ -106,7 +100,11 @@ if __name__ == "__main__":
         current_sec = fixed
         for i in range(len(word_seqs[story].data_times)):
             if word_seqs[story].data_times[i] > fixed: break
-        begin_words, begin_time = get_beginning_info(str(em_data['model_path']), fixed)
+        if is_orig:
+            begin_words = word_seqs[story].data[:i]
+            begin_time = list(range(len(begin_words)))
+        else:
+            begin_words, begin_time = get_beginning_info(str(em_data['model_path']), fixed)
         data_times = np.concatenate([word_seqs[story].data_times[:i][begin_time], np.linspace(fixed, 17, sum(word_rates[:unfixed_tr-1])+1)[:-1]])
         
         candidate = [[(begin_words, 1)]]
@@ -161,10 +159,10 @@ if __name__ == "__main__":
                 ))
             logger.info([can[-1] for can in candidate])
             logger.info(reference[-1])
-            
+
             save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id))
             os.makedirs(save_location, exist_ok = True)
-            np.savez(os.path.join(save_location, "%s_result" % story),
+            np.savez(os.path.join(save_location, "%s_result_11" % story),
                 can_stcs=np.array([list(map(lambda x: blank.join(x[0]).encode(), candidate[i])) for i in range(config.EXTENSIONS)]),
                 can_corr=np.array([list(map(lambda x: x[1], candidate[i])) for i in range(config.EXTENSIONS)]),
                 ref_stcs=np.array(list(map(lambda x: ' '.join(x[0]).encode(), reference))),
@@ -172,4 +170,4 @@ if __name__ == "__main__":
                 chance_em=np.array([[chances[i][j][1] for i in range(len(chances))] for j in range(len(reference))]) if args.num_chance else None,
                 chance_stcs=np.array([list(map(lambda x: blank.join(x[0]).encode(), chances[i])) for i in range(len(chances))]),
                 fixed=fixed, k=config.EXTENSIONS, samples=config.WIDTH
-                )
+            )

@@ -21,8 +21,6 @@ def get_story_wordseqs(stories):
     return wordseqs
 
 def get_punc_script(story):
-    # with open(os.path.join(config.DATA_TRAIN_DIR, "train_stimulus", "script_with_punctuation", story+".txt"), "r") as f:
-    #     return f.read().replace('*', '')
     return pickle.load(open(os.path.join(config.DATA_TRAIN_DIR, "train_stimulus", "script_with_punctuation", story+".pickle"), 'rb'))
 
 def get_embedding(stories, embedmodel, tr_stats = False):
@@ -43,26 +41,20 @@ def get_embedding(stories, embedmodel, tr_stats = False):
 def get_stim(stories, features, tr_stats = None, old_tokeni=True):
     """extract quantitative features of stimulus stories
     """
-
     if features.model.path == 'eng1000':
         ds_vecs = get_feature_space('eng1000', stories) # add sentence
     else:
+        word_seqs = get_story_wordseqs(stories)
         if old_tokeni:
-            word_seqs = get_story_wordseqs(stories)
             word_vecs = {story : features.make_stim(word_seqs[story].data, old_tokeni=old_tokeni) for story in stories}
-            word_mat = np.vstack([word_vecs[story][0] for story in stories])
-            word_mean, word_std = word_mat.mean(0), word_mat.std(0)
-            ds_vecs = {story : lanczosinterp2D(word_vecs[story][0], word_seqs[story].data_times[word_vecs[story][1]], word_seqs[story].tr_times)
-                for story in stories}
         else:
-            word_seqs = get_story_wordseqs(stories)
             wordind2tokind = {story: features.model.get_wordind2tokind(get_punc_script(story)) for story in stories}
             word_vecs = {story : features.make_stim(get_punc_script(story), mark = ' ') for story in stories}
-            word_mat = np.vstack([word_vecs[story] for story in stories])
-            word_mean, word_std = word_mat.mean(0), word_mat.std(0)
-            ds_vecs = {story : lanczosinterp2D(word_vecs[story], word_seqs[story].data_times[wordind2tokind[story]], word_seqs[story].tr_times)
-                for story in stories}
-            
+        ds_vecs = {
+            story : lanczosinterp2D(word_vecs[story], word_seqs[story].data_times[wordind2tokind[story]], word_seqs[story].tr_times)
+            for story in stories
+        }
+
     ds_mat = np.vstack([ds_vecs[story][5+config.TRIM:-config.TRIM] for story in stories])
     if tr_stats is None:
         r_mean, r_std = ds_mat.mean(0), ds_mat.std(0)
@@ -71,19 +63,6 @@ def get_stim(stories, features, tr_stats = None, old_tokeni=True):
         r_mean, r_std = tr_stats
     ds_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
     del_mat = make_delayed(ds_mat, config.STIM_DELAYS)
-    '''
-    del_mat = {story: make_delayed(ds_vecs[story], config.STIM_DELAYS) for story in stories}
-
-    ds_mat = np.vstack([del_mat[story][5+config.TRIM:-config.TRIM] for story in stories])
-    if tr_stats is None:
-        r_mean, r_std = ds_mat.mean(0), ds_mat.std(0)
-        r_std[r_std == 0] = 1
-    else:
-        r_mean, r_std = tr_stats
-    del_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
-    # ds_mat = (ds_mat - r_mean) /r_std
-    '''
-
     if tr_stats is None: return del_mat, (r_mean, r_std)
     else: return del_mat
 
