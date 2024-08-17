@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-gpu_device = '0,1'
+gpu_device = '2,3'
 print("GPU DEVICE NO: ", gpu_device)
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
 
@@ -25,7 +25,7 @@ NBOOTS = 15
 VOXELS = 10000
 CHUNKLEN = 40
 GPT_LAYER = 9
-GPT_WORDS = 20
+GPT_WORDS = 5
 
 # decoder parameters
 
@@ -55,5 +55,8 @@ MODELS = {
     'embed_large' : 'text-embedding-3-large',
     'original' : os.path.join(DATA_LM_DIR, "perceived", "model"),
     "deberta_xxlarge": "microsoft/deberta-v2-xxlarge",
-    "e5" : "intfloat/e5-mistral-7b-instruct"
+    "e5" : "intfloat/e5-mistral-7b-instruct",
+    "t5_xxlarge" : "sentence-transformers/sentence-t5-xxl",
+    "roberta" : "FacebookAI/roberta-large",
+    "t5_11b" : "google-t5/t5-11b",
 }

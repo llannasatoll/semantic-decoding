@@ -31,12 +31,12 @@ class StimulusModel():
         self.tr_mean = torch.from_numpy(tr_stats[0]).float().to(device)
         self.tr_std_inv = torch.from_numpy(np.diag(1 / tr_stats[1])).float().to(device)
         self.blank = torch.from_numpy(word_mean).float().to(self.device)
-        
+
     def _downsample(self, variants):
         """downsamples word embeddings to TR embeddings for each hypothesis
         """
         return torch.matmul(self.lanczos_mat.unsqueeze(0), variants)
-    
+
     def _normalize(self, tr_variants):
         """normalize TR embeddings for each hypothesis
         """
@@ -97,7 +97,8 @@ class LMFeatures():
             return None, wordind2tokind
 
         if self.model.is_encoder:
-            return embs[:, 0]
+            assert old_tokeni
+            return embs[:, 0], wordind2tokind
         elif old_tokeni:
             return np.vstack([embs[0, :self.context_words],
                 embs[:context_array.shape[0] - self.context_words, self.context_words]]), wordind2tokind

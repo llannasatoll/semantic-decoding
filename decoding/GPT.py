@@ -7,13 +7,13 @@ import copy
 import json
 
 import config
-from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, LlamaForCausalLM
 from torch.nn.functional import softmax
 
 logger = logging.getLogger("GPT")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setLevel(logging.INFO)
+stdout_handler.setLevel(logging.DEBUG)
 logger.addHandler(stdout_handler)
 torch.backends.cudnn.enabled = False
 
@@ -34,11 +34,17 @@ class GPT():
             self.word2id = {w : i for i, w in enumerate(self.vocab)}
             self.UNK_ID = self.word2id['<unk>']
         else:
-            self.model = AutoModel.from_pretrained(path, device_map="balanced")
+            if "Llama" in path:
+                self.model = LlamaForCausalLM.from_pretrained(path, device_map="balanced")
+                print(type(self.model))
+                print(hasattr(self.model, "generate"))
+            if "deberta" in path:
+                self.model = AutoModel.from_pretrained(path).to(self.device)
+            else:
+                self.model = AutoModelForCausalLM.from_pretrained(path, device_map="balanced")
             self.tokenizer = AutoTokenizer.from_pretrained(path)
             self.UNK_ID = 0 if self.tokenizer.unk_token is None else self.tokenizer.encode(self.tokenizer.unk_token)[0]
             self.word2id = self.tokenizer.vocab
-            # self.BOS_ID = self.tokenizer.bos_token
 
     def get_wordind2tokind(self, words):
         wordind2tokind = []
@@ -68,14 +74,15 @@ class GPT():
         """map from words to ids
         """
         if self.path == config.MODELS["original"]:
-            return [self.word2id[x] if x in self.word2id else self.UNK_ID for x in words], list(range(len(words)))
+            ids = [self.word2id[x] if x in self.word2id else self.UNK_ID for x in words]
+            return ids, list(range(len(words)))
 
         if not old_tokeni:
             return self.tokenizer.encode(mark.join(words), max_length=5000)
+        
         i = 0
-        wordind2tokind = []
+        wordind2tokind, ids = [], []
         if mark == '':
-            ids = []
             for i, w in enumerate(words):
                 tmp = self.tokenizer.encode(w)
                 if i != 0 and self.path == 'meta-llama/Meta-Llama-3-8B':
@@ -92,6 +99,9 @@ class GPT():
                     wordind2tokind.append(i-1)
                     continue
                 logger.debug(f"tok/word : {tok}/{words[i]}")
+                if "t5" in self.path:
+                    tok = tok.replace(self.tokenizer.unk_token, "")
+                    words[i] = words[i].replace("{", "").replace("}", "").replace("\\", "")
                 if tok in [' ', "", self.tokenizer.eos_token]:
                     wordind2tokind.append(i-1)
                     continue
@@ -112,7 +122,7 @@ class GPT():
                 elif tok[0] != ' ':
                     tmp_i = 0
                     # Try to find how many tokens previous continuation
-                    for tmp_i in range(_i-1, max(-1, _i-6), -1):
+                    for tmp_i in range(_i-1, max(-1, _i-11), -1):
                         if self.tokenizer.decode(ids[tmp_i]) == "": continue
                         # For E5 models
                         if words[i] == self.tokenizer.decode(ids[tmp_i:_i+1]): break
@@ -136,15 +146,14 @@ class GPT():
                         logger.debug(f"NOT FORMED: {words[i]} != {self.tokenizer.decode(ids[tmp_i:_i+1])}")
                         wordind2tokind.append(i)
                     else:
-                        logger.debug(f'{tmp_i} {self.tokenizer.decode(ids[tmp_i:_i+1])}')
-                        logger.debug(f"tok :{tok}\tword[i-3:i+3] :{words[max(0,i-3):i+3]}")
+                        logger.warning(f'{tmp_i} {self.tokenizer.decode(ids[tmp_i:_i+1])}')
+                        logger.warning(f"tok :{tok}\tword[i-3:i+3] :{words[max(0,i-3):i+3]}")
                         raise
                 elif tok.replace(' ', '') in words[i]:
                     wordind2tokind.append(i)
                 else:
-                    logger.debug(f"tok :{tok}\tword[i-3:i+3] :{words[max(0,i-3):i+3]}")
+                    logger.warning(f"tok :{tok}\tword[i-3:i+3] :{words[max(0,i-3):i+3]}")
                     raise
-
         assert len(ids) == len(wordind2tokind), f"{len(ids)} != {len(wordind2tokind)}"
         return ids, wordind2tokind
 
@@ -155,22 +164,32 @@ class GPT():
             tok['attention_mask'] = torch.ones_like(tok["input_ids"])
         else:
             tok = self.tokenizer(sentence, return_tensors="pt")
-        kwargs = {
-            "input_ids" : tok['input_ids'].to(config.GPT_DEVICE),
-            "attention_mask" : tok['attention_mask'].to(config.GPT_DEVICE),
-            "max_length" : tok['input_ids'].shape[-1] + max_new_tokens,
-            "repetition_penalty" : 2.0,
-            "num_return_sequences" : num_sample,
-            "do_sample" : do_sample,
-        }
-        if not do_sample:
-            kwargs["diversity_penalty"] = 1.0
-            kwargs["num_beam_groups"] = 100
-            kwargs["num_beams"] = 100
-        if self.path != config.MODELS["original"]:
-            kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
-            kwargs["pad_token_id"] = self.tokenizer.eos_token_id
-        outputs = self.model.generate(**kwargs)
+        # kwargs = {
+        #     "input_ids" : tok['input_ids'].to(config.GPT_DEVICE),
+        #     "attention_mask" : tok['attention_mask'].to(config.GPT_DEVICE),
+        #     "max_length" : tok['input_ids'].shape[-1] + max_new_tokens,
+        #     "repetition_penalty" : 2.0,
+        #     "num_return_sequences" : num_sample,
+        #     "do_sample" : do_sample,
+        # }
+        # if not do_sample:
+        #     kwargs["diversity_penalty"] = 1.0
+        #     kwargs["num_beam_groups"] = 100
+        #     kwargs["num_beams"] = 100
+        # if self.path != config.MODELS["original"]:
+        #     # kwargs["bad_words_ids"] = [[128001]],
+        #     kwargs["pad_token_id"] = self.tokenizer.eos_token_id
+        # outputs = self.model.generate(bad_words_ids=[[128001]], **kwargs)
+        outputs = self.model.generate(
+            input_ids=tok['input_ids'].to(config.GPT_DEVICE),
+            attention_mask=tok['attention_mask'].to(config.GPT_DEVICE),
+            max_length=tok['input_ids'].shape[-1] + max_new_tokens,
+            repetition_penalty=2.0,
+            num_return_sequences=num_sample,
+            do_sample=do_sample,
+            bad_words_ids=[[128001]],
+            pad_token_id=self.tokenizer.eos_token_id
+        )
         return outputs
 
     def get_story_array(self, words, context_words, mark=' ', old_tokeni=True):
@@ -237,9 +256,16 @@ class GPT():
             outputs = []
             with torch.no_grad():
                 for i in range(len(ids)):
-                    output = self.model(
-                        input_ids = torch.reshape(ids[i], (1, -1)).to(self.device), 
-                        attention_mask = torch.reshape(mask[i], (1,-1)).to(self.device), output_hidden_states = True
-                    )
-                    outputs.append(output.hidden_states[layer][0].detach().cpu().numpy())
+                    kwargs = {
+                        "input_ids" : torch.reshape(ids[i], (1, -1)).to(self.device),
+                        "attention_mask" : torch.reshape(mask[i], (1,-1)).to(self.device), 
+                        "output_hidden_states" : True
+                    }
+                    if "t5" in self.path:
+                        kwargs["decoder_input_ids"] = kwargs["input_ids"]
+                    output = self.model(**kwargs)
+                    if "t5" in self.path:
+                        outputs.append(output.encoder_hidden_states[layer][0].detach().cpu().numpy())
+                    else:
+                        outputs.append(output.hidden_states[layer][0].detach().cpu().numpy())
             return ids, wordind2tokind, np.array(outputs)

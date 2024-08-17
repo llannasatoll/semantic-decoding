@@ -26,15 +26,17 @@ def get_beginning_info(model_path, fixed):
             begin_time = [0,1,2,3,4,5,5]
     elif model_path == 'meta-llama/Meta-Llama-3-8B':
         if fixed == 15:
-            # begin_words = ['<|begin_of_text|>', 'i', ' reached', ' over', ' and', ' secretly', ' und', 'id', ' my', ' seat', 'belt', ' and', ' when', ' his']
             begin_words = ['<|begin_of_text|>', 'i', ' reached', ' over', ' and', ' secretly', ' und', 'id', ' my', ' seat', 'belt', ' and', ' when', ' his', ' foot', ' hit', ' the', ' brake', ' at', ' the', ' red', ' light', ' i', ' fl', 'ung', ' open', ' the', ' door', ' and', ' i', ' ran', ' i', ' had', ' no', ' shoes', ' on', ' i', ' was', ' crying', ' i', ' had', ' no']
             begin_time = [0,0,1,2,3,4,5,5,6,7,7,8,9,10,11,12,13,14,15,16,17,18,19,20,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37]
+        elif fixed == 11:
+            begin_words = ['<|begin_of_text|>', 'i', ' reached', ' over', ' and', ' secretly', ' und', 'id', ' my', ' seat', 'belt', ' and', ' when', ' his', ' foot', ' hit', ' the', ' brake', ' at', ' the', ' red', ' light', ' i', ' fl', 'ung', ' open', ' the', ' door', ' and', ' i', ' ran', ' i']
+            begin_time = [0,0,1,2,3,4,5,5,6,7,7,8,9,10,11,12,13,14,15,16,17,18,19,20,20,21,22,23,24,25,26,27]
         elif fixed == 3:
             raise()
             begin_words = ['<|begin_of_text|>', 'i', ' reached', ' over', ' and', ' secretly', ' und', 'id']
             begin_time = [0,0,1,2,3,4,5,5,6,7,7,8,9,10]
     return begin_words, begin_time
-    
+
 if __name__ == "__main__":
 
     logger = logging.getLogger("decode_words")
@@ -61,7 +63,7 @@ if __name__ == "__main__":
 
     gpt = GPT(path = str(em_data['model_path']), device = config.GPT_DEVICE)
     if args.llm != "original":
-        gpt.model.generation_config.pad_token_id = gpt.tokenizer.pad_token_id  
+        # gpt.model.generation_config.pad_token_id = gpt.tokenizer.pad_token_id  
         gpt.tokenizer.pad_token_id = gpt.tokenizer.eos_token_id
     features = LMFeatures(model = gpt, layer = em_data['layer'], context_words = -1)
 
@@ -106,7 +108,7 @@ if __name__ == "__main__":
         else:
             begin_words, begin_time = get_beginning_info(str(em_data['model_path']), fixed)
         data_times = np.concatenate([word_seqs[story].data_times[:i][begin_time], np.linspace(fixed, 17, sum(word_rates[:unfixed_tr-1])+1)[:-1]])
-        
+
         candidate = [[(begin_words, 1)]]
         reference = [(word_seqs[story].data[:i], 1)]
         chances = [[(begin_words, 1)] for _ in range(args.num_chance)]
@@ -124,9 +126,10 @@ if __name__ == "__main__":
             for words_corr_list in candidate:
                 words = []
                 for ws, _ in words_corr_list:
+                    max_length = 1000
                     words.extend(ws)
-                outputs = gpt.generate(blank.join(words[-1000:]), num_words, config.WIDTH)
-                num_oldtok = len(words[-1000:]) if is_orig else len(gpt.tokenizer.encode(blank.join(words[-1000:])))
+                outputs = gpt.generate(blank.join(words[-max_length:]), num_words, config.WIDTH)
+                num_oldtok = len(words[-max_length:]) if is_orig else len(gpt.tokenizer.encode(blank.join(words[-max_length:])))
                 for ii, sample_output in enumerate(outputs):
                     tmp = [gpt.vocab[x] if x < len(gpt.vocab) else '<unk>' for x in sample_output[num_oldtok:]] \
                         if is_orig else [gpt.tokenizer.decode(t, skip_special_tokens=True) for t in sample_output[num_oldtok:]]
@@ -135,13 +138,14 @@ if __name__ == "__main__":
                     del_mat = get_stim_from_wordslist(words+tmp, features, data_times, list(range(current_sec-(fixed-11), current_sec+(19-fixed)+1, 2)))
                     pred = clf.predict(del_mat[-1].reshape(1, -1))[0]
                     res.append(words_corr_list + [(tmp[:word_rates[i]], pearsonr(pred, resp_test[i])[0])])
-            
+
             for chance in chances:
                 words = []
                 for ws, _ in chance:
                     words.extend(ws)
-                outputs = gpt.generate(blank.join(words[-1000:]), num_words, 1, do_sample=True)[0]
-                num_oldtok = len(words[-1000:]) if is_orig else len(gpt.tokenizer.encode(blank.join(words[-1000:])))
+                outputs = gpt.generate(blank.join(words[-max_length:]), num_words, 1, do_sample=True)[0]
+                num_oldtok = len(words[-max_length:]) \
+                    if is_orig else len(gpt.tokenizer.encode(blank.join(words[-max_length:])))
                 tmp = [gpt.vocab[x] if x < len(gpt.vocab) else '<unk>' for x in outputs[num_oldtok:]] \
                     if is_orig else [gpt.tokenizer.decode(t) for t in outputs[num_oldtok:]]
                 if len(tmp) != num_words:
@@ -162,7 +166,7 @@ if __name__ == "__main__":
 
             save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id))
             os.makedirs(save_location, exist_ok = True)
-            np.savez(os.path.join(save_location, "%s_result_11" % story),
+            np.savez(os.path.join(save_location, "%s_result" % story),
                 can_stcs=np.array([list(map(lambda x: blank.join(x[0]).encode(), candidate[i])) for i in range(config.EXTENSIONS)]),
                 can_corr=np.array([list(map(lambda x: x[1], candidate[i])) for i in range(config.EXTENSIONS)]),
                 ref_stcs=np.array(list(map(lambda x: ' '.join(x[0]).encode(), reference))),
