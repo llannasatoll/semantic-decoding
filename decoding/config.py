@@ -1,6 +1,8 @@
 import os
 import numpy as np
+import socket
 
+HOSTNAME = socket.gethostname() 
 gpu_device = '2,3'
 print("GPU DEVICE NO: ", gpu_device)
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
@@ -8,7 +10,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
 # paths
 
 REPO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_LM_DIR = os.path.join("/home/anna/semantic-decoding", "data_lm")
+DATA_LM_DIR = os.path.join(REPO_DIR, "data_lm")
 DATA_TRAIN_DIR = os.path.join(REPO_DIR, "data_train")
 DATA_TEST_DIR = os.path.join(REPO_DIR, "data_test")
 MODEL_DIR = os.path.join(REPO_DIR, "models")
@@ -25,7 +27,7 @@ NBOOTS = 15
 VOXELS = 10000
 CHUNKLEN = 40
 GPT_LAYER = 9
-GPT_WORDS = 5
+GPT_WORDS = 20
 
 # decoder parameters
 
@@ -43,7 +45,10 @@ WINDOW = 20
 
 # devices
 
-GPT_DEVICE = "cuda"
+if HOSTNAME == "thales":
+    GPT_DEVICE = "cpu"
+else:
+    GPT_DEVICE = "cuda"
 EM_DEVICE = "cuda"
 SM_DEVICE = "cuda"
 

@@ -86,7 +86,7 @@ if __name__ == "__main__":
     wordvec, resp = get_em_feature_pair(args.subject, em_data['train_stories'], features, vox)
     wordvec_test, resp_test = get_em_feature_pair(args.subject, test_stories, features, vox)
     # clf = Ridge(alpha=em_data['alpha'][vox])
-    clf = Ridge(alpha=464158.8833612772)
+    clf = Ridge(alpha=em_data['alpha'][vox].mean())
     clf.fit(wordvec, resp)
     assert resp_test.shape[0] == len(word_rates), f'{resp_test.shape[0]} != {len(word_rates)}'
     del wordvec, resp

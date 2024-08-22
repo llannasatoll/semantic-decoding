@@ -32,44 +32,53 @@ if __name__ == "__main__":
         chances = result['chance_stcs']
 
         blank = " " if args.llm == "original" else ""
-        for i in tqdm(range(len(result['ref_corr'])-1)):
-            can_tmp = blank.join([stc.decode() for stc in result['can_stcs'][args.candidate][1:][max(0,i-5):i+5]]).replace('\n', '').replace('<|begin_of_text|>', '')
-            ref_tmp = ' '.join([stc.decode() for stc in result['ref_stcs'][1:][max(0,i-5):i+5]]).replace('\n', '')
-            with open(tmp_path%1, 'w') as f:
-                f.write(can_tmp+'\n')
-            with open(tmp_path%2, 'w') as f:
-                f.write(ref_tmp+'\n')
-
-            idf_sents = np.load(os.path.join(config.DATA_TEST_DIR, "idf_segments.npy"))
-            metric = BERTScorer(
-                lang = "en",
-                rescale_with_baseline = False, 
-                idf = (idf_sents is not None),
-                idf_sents = idf_sents, 
-                # model_type = "microsoft/deberta-v2-xxlarge",
-                # num_layers=44
-            )
-            score_id = 1
-            f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
-
-            bertscores['f1'].append(f1_tmp)
-            logger.info(ref_tmp)
-            logger.info(f"[CAND] {f1_tmp}: {can_tmp}")
-
-            for j in range(len(chances)):
-                can_tmp = ''.join(list(map(lambda x: x.decode(), chances[j][1:][max(0,i-5):i+5]))).replace('\n', '')
+        try:
+            for i in tqdm(range(len(result['ref_corr'])-1)):
+                can_tmp = blank.join([stc.decode() for stc in result['can_stcs'][args.candidate][1:][max(0,i-5):i+5]]).replace('\n', '').replace('<|begin_of_text|>', '')
+                ref_tmp = ' '.join([stc.decode() for stc in result['ref_stcs'][1:][max(0,i-5):i+5]]).replace('\n', '')
                 with open(tmp_path%1, 'w') as f:
                     f.write(can_tmp+'\n')
-                f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
-                try:
-                    logger.info(f"{f1_tmp}, {can_tmp}")
-                    bertscores['chance'][j].append(f1_tmp)
-                except:
-                    bertscores['chance'][j].append(0)
+                with open(tmp_path%2, 'w') as f:
+                    f.write(ref_tmp+'\n')
 
-        save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id)
-        os.makedirs(save_location, exist_ok = True)
-        np.savez(os.path.join(save_location, "%s_bertscore" % story),
-            f1 = np.array(bertscores['f1']),
-            chance_f1 = np.array(bertscores['chance']),
-        )
+                idf_sents = np.load(os.path.join(config.DATA_TEST_DIR, "idf_segments.npy"))
+                metric = BERTScorer(
+                    lang = "en",
+                    rescale_with_baseline = False, 
+                    idf = (idf_sents is not None),
+                    idf_sents = idf_sents, 
+                    model_type = "microsoft/deberta-v2-xxlarge",
+                    num_layers=44
+                )
+                score_id = 1
+                f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
+
+                bertscores['f1'].append(f1_tmp)
+                logger.info(ref_tmp)
+                logger.info(f"[CAND] {f1_tmp}: {can_tmp}")
+
+                for j in range(len(chances)):
+                    can_tmp = ''.join(list(map(lambda x: x.decode(), chances[j][1:][max(0,i-5):i+5]))).replace('\n', '')
+                    with open(tmp_path%1, 'w') as f:
+                        f.write(can_tmp+'\n')
+                    f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
+                    try:
+                        logger.info(f"{f1_tmp}, {can_tmp}")
+                        bertscores['chance'][j].append(f1_tmp)
+                    except:
+                        bertscores['chance'][j].append(0)
+
+            save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id)
+            os.makedirs(save_location, exist_ok = True)
+            np.savez(os.path.join(save_location, "%s_bertscore" % story),
+                f1 = np.array(bertscores['f1']),
+                chance_f1 = np.array(bertscores['chance']),
+            )
+        except Exception as e:
+            # logger.warning(f"Exception occurred : {e}. Saving at {i}")
+            save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id)
+            os.makedirs(save_location, exist_ok = True)
+            np.savez(os.path.join(save_location, "%s_bertscore" % story),
+                f1 = np.array(bertscores['f1']),
+                chance_f1 = np.array(bertscores['chance']),
+            )

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import json
 import pickle
+from sklearn.decomposition import PCA
 
 import config
 from utils_ridge.stimulus_utils import TRFile, load_textgrids, load_simulated_trfiles
@@ -9,6 +10,8 @@ from utils_ridge.dsutils import make_word_ds
 from utils_ridge.interpdata import lanczosinterp2D
 from utils_ridge.util import make_delayed
 from feature_spaces import get_feature_space
+
+pca = PCA(n_components=1000)
 
 def get_story_wordseqs(stories):
     """loads words and word times of stimulus stories
@@ -64,6 +67,10 @@ def get_stim(stories, features, tr_stats = None, old_tokeni=True):
     else:
         r_mean, r_std = tr_stats
     ds_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
+    if "Llama" in features.model.path:
+        if len(stories) > 1:
+            pca.fit(ds_mat)
+        ds_mat = pca.transform(ds_mat)
     del_mat = make_delayed(ds_mat, config.STIM_DELAYS)
     if tr_stats is None: return del_mat, (r_mean, r_std)
     else: return del_mat

@@ -11,9 +11,9 @@ from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, LlamaFo
 from torch.nn.functional import softmax
 
 logger = logging.getLogger("GPT")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
-stdout_handler.setLevel(logging.DEBUG)
+stdout_handler.setLevel(logging.INFO)
 logger.addHandler(stdout_handler)
 torch.backends.cudnn.enabled = False
 
@@ -164,32 +164,33 @@ class GPT():
             tok['attention_mask'] = torch.ones_like(tok["input_ids"])
         else:
             tok = self.tokenizer(sentence, return_tensors="pt")
-        # kwargs = {
-        #     "input_ids" : tok['input_ids'].to(config.GPT_DEVICE),
-        #     "attention_mask" : tok['attention_mask'].to(config.GPT_DEVICE),
-        #     "max_length" : tok['input_ids'].shape[-1] + max_new_tokens,
-        #     "repetition_penalty" : 2.0,
-        #     "num_return_sequences" : num_sample,
-        #     "do_sample" : do_sample,
-        # }
-        # if not do_sample:
-        #     kwargs["diversity_penalty"] = 1.0
-        #     kwargs["num_beam_groups"] = 100
-        #     kwargs["num_beams"] = 100
-        # if self.path != config.MODELS["original"]:
-        #     # kwargs["bad_words_ids"] = [[128001]],
-        #     kwargs["pad_token_id"] = self.tokenizer.eos_token_id
+        kwargs = {
+            "input_ids" : tok['input_ids'].to(config.GPT_DEVICE),
+            "attention_mask" : tok['attention_mask'].to(config.GPT_DEVICE),
+            "max_length" : tok['input_ids'].shape[-1] + max_new_tokens,
+            "repetition_penalty" : 2.0,
+            "num_return_sequences" : num_sample,
+            "do_sample" : do_sample,
+        }
+        if not do_sample:
+            kwargs["diversity_penalty"] = 1.0
+            kwargs["num_beam_groups"] = 100
+            kwargs["num_beams"] = 100
+        if self.path != config.MODELS["original"]:
+            kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
+            kwargs["pad_token_id"] = self.tokenizer.eos_token_id
+        outputs = self.model.generate(**kwargs)
         # outputs = self.model.generate(bad_words_ids=[[128001]], **kwargs)
-        outputs = self.model.generate(
-            input_ids=tok['input_ids'].to(config.GPT_DEVICE),
-            attention_mask=tok['attention_mask'].to(config.GPT_DEVICE),
-            max_length=tok['input_ids'].shape[-1] + max_new_tokens,
-            repetition_penalty=2.0,
-            num_return_sequences=num_sample,
-            do_sample=do_sample,
-            bad_words_ids=[[128001]],
-            pad_token_id=self.tokenizer.eos_token_id
-        )
+        # outputs = self.model.generate(
+        #     input_ids=tok['input_ids'].to(config.GPT_DEVICE),
+        #     attention_mask=tok['attention_mask'].to(config.GPT_DEVICE),
+        #     max_length=tok['input_ids'].shape[-1] + max_new_tokens,
+        #     repetition_penalty=2.0,
+        #     num_return_sequences=num_sample,
+        #     do_sample=do_sample,
+        #     bad_words_ids=[[128001]],
+        #     pad_token_id=self.tokenizer.eos_token_id
+        # )
         return outputs
 
     def get_story_array(self, words, context_words, mark=' ', old_tokeni=True):
