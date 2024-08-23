@@ -3,7 +3,7 @@ import numpy as np
 import socket
 
 HOSTNAME = socket.gethostname() 
-gpu_device = '2,3'
+gpu_device = '2'
 print("GPU DEVICE NO: ", gpu_device)
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
 
@@ -64,4 +64,5 @@ MODELS = {
     "t5_xxlarge" : "sentence-transformers/sentence-t5-xxl",
     "roberta" : "FacebookAI/roberta-large",
     "t5_11b" : "google-t5/t5-11b",
+    "opt-13b" : "facebook/opt-13b",
 }

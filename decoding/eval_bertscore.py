@@ -47,8 +47,8 @@ if __name__ == "__main__":
                     rescale_with_baseline = False, 
                     idf = (idf_sents is not None),
                     idf_sents = idf_sents, 
-                    model_type = "microsoft/deberta-v2-xxlarge",
-                    num_layers=44
+                    # model_type = "microsoft/deberta-v2-xxlarge",
+                    # num_layers=44
                 )
                 score_id = 1
                 f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]

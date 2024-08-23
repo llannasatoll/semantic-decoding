@@ -97,6 +97,10 @@ if __name__ == "__main__":
     word_seqs = get_story_wordseqs(test_stories)
     word_rates = np.insert(word_rates, 0, [mean_wordrate for _ in range(unfixed_tr)])
     word_rates = np.array(list(map(round, word_rates)))
+    if is_orig:
+        max_length = 512 - 50
+    else:
+        max_length = min(1000, gpt.tokenizer.model_max_length - 50)
 
     for story in test_stories:
         current_sec = fixed
@@ -126,7 +130,6 @@ if __name__ == "__main__":
             for words_corr_list in candidate:
                 words = []
                 for ws, _ in words_corr_list:
-                    max_length = 1000
                     words.extend(ws)
                 outputs = gpt.generate(blank.join(words[-max_length:]), num_words, config.WIDTH)
                 num_oldtok = len(words[-max_length:]) if is_orig else len(gpt.tokenizer.encode(blank.join(words[-max_length:])))

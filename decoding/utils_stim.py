@@ -67,7 +67,7 @@ def get_stim(stories, features, tr_stats = None, old_tokeni=True):
     else:
         r_mean, r_std = tr_stats
     ds_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
-    if "Llama" in features.model.path:
+    if "Llama" in features.model.path or "opt-13b" in features.model.path:
         if len(stories) > 1:
             pca.fit(ds_mat)
         ds_mat = pca.transform(ds_mat)
