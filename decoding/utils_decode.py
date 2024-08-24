@@ -6,7 +6,7 @@ import itertools as itools
 
 import config
 from utils_ridge.DataSequence import DataSequence
-from utils_stim import get_stim, get_story_wordseqs
+from utils_stim import get_stim, get_story_wordseqs, get_pca
 from utils_resp import get_resp
 from utils_ridge.util import make_delayed
 from utils_ridge.interpdata import lanczosinterp2D
@@ -49,8 +49,8 @@ def get_shuffled_ind(resplen, chunklen):
     assert len(shuffled_inds) == resplen, f'{len(shuffled_inds)} != {resplen}'
     return shuffled_inds
 
-def get_stim_from_wordslist(wordslist, features, data_times, tr_time, tr_stats = None):
-    word_mat, wordind2tokind = features.make_stim(wordslist, old_tokeni=True, mark = '')
+def get_stim_from_wordslist(wordslist, features, data_times, tr_time, tr_stats = None, mark = ""):
+    word_mat, wordind2tokind = features.make_stim(wordslist, old_tokeni=True, mark = mark)
     try:
         ds_mat = lanczosinterp2D(word_mat, data_times[wordind2tokind], tr_time)
     except:
@@ -62,6 +62,9 @@ def get_stim_from_wordslist(wordslist, features, data_times, tr_time, tr_stats =
     r_mean, r_std = ds_mat.mean(0), ds_mat.std(0)
     r_std[r_std == 0] = 1
     ds_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
+    if "Llama" in features.model.path or "opt-13b" in features.model.path:
+        pca = get_pca()
+        ds_mat = pca.transform(ds_mat)
     del_mat = make_delayed(ds_mat, config.STIM_DELAYS)
 
     return del_mat

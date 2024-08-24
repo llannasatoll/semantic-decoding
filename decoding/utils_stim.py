@@ -13,6 +13,9 @@ from feature_spaces import get_feature_space
 
 pca = PCA(n_components=1000)
 
+def get_pca():
+    return pca
+
 def get_story_wordseqs(stories):
     """loads words and word times of stimulus stories
     """

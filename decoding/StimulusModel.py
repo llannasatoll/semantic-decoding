@@ -89,7 +89,7 @@ class LMFeatures():
         context_array, wordind2tokind, embs = self.model.get_story_array_and_hidden(
             words,
             self.context_words,
-            layer = self.layer,
+            layer=self.layer,
             mark=mark,
             old_tokeni=old_tokeni,
         )

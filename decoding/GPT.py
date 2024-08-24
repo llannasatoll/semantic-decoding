@@ -21,6 +21,7 @@ class GPT():
     """wrapper for https://huggingface.co/openai-gpt
     """
     def __init__(self, path, is_encoder=False, device = 'cpu'):
+        path = path.replace("/home", "/Storage2")
         self.device = device
         self.path = path
         self.is_encoder = is_encoder
@@ -79,10 +80,11 @@ class GPT():
 
         if not old_tokeni:
             return self.tokenizer.encode(mark.join(words), max_length=5000)
-        
+
         i = 0
         wordind2tokind, ids = [], []
         if mark == '':
+            if self.path != 'meta-llama/Meta-Llama-3-8B': raise()
             for i, w in enumerate(words):
                 tmp = self.tokenizer.encode(w)
                 if i != 0 and self.path == 'meta-llama/Meta-Llama-3-8B':
