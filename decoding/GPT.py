@@ -30,14 +30,14 @@ class GPT():
         elif path == config.MODELS["original"]:
             with open(os.path.join(config.DATA_LM_DIR, "perceived", "vocab.json"), "r") as f:
                 vocab = json.load(f)
-            self.model = AutoModelForCausalLM.from_pretrained(path).eval().to("cuda:1") if not not_load_model else None
+            self.model = AutoModelForCausalLM.from_pretrained(path).eval().to("cpu") if not not_load_model else None
             self.vocab = vocab
             self.word2id = {w : i for i, w in enumerate(self.vocab)}
             self.UNK_ID = self.word2id['<unk>']
         else:
             if "Llama" in path:
                 # self.model = LlamaForCausalLM.from_pretrained(path, device_map="auto")#.to(self.device)
-                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0") if not not_load_model else None
+                self.model = LlamaForCausalLM.from_pretrained(path).to("cpu") if not not_load_model else None
             elif "deberta" in path:
                 self.model = AutoModel.from_pretrained(path).to(self.device) if not not_load_model else None
             else:
@@ -187,7 +187,10 @@ class GPT():
             # kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
             kwargs["pad_token_id"] = self.tokenizer.eos_token_id
         # outputs = self.model.generate(**kwargs)
-        outputs = self.model.generate(bad_words_ids=[[self.tokenizer.eos_token_id]] if self.path != config.MODELS["original"] else [], **kwargs)
+        if self.path != config.MODELS["original"]:
+            outputs = self.model.generate(bad_words_ids=[[self.tokenizer.eos_token_id]], **kwargs)
+        else:
+            outputs = self.model.generate(**kwargs)
         # outputs = self.model.generate(
         #     input_ids=tok['input_ids'].to(config.GPT_DEVICE),
         #     attention_mask=tok['attention_mask'].to(config.GPT_DEVICE),
