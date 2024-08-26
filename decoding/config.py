@@ -3,7 +3,7 @@ import numpy as np
 import socket
 
 HOSTNAME = socket.gethostname() 
-gpu_device = '2'
+gpu_device = "5"
 print("GPU DEVICE NO: ", gpu_device)
 os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
 

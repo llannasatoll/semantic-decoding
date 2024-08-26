@@ -75,7 +75,7 @@ if __name__ == "__main__":
                 chance_f1 = np.array(bertscores['chance']),
             )
         except Exception as e:
-            # logger.warning(f"Exception occurred : {e}. Saving at {i}")
+            logger.warning(f"Exception occurred : {e}. Saving at {i}")
             save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id)
             os.makedirs(save_location, exist_ok = True)
             np.savez(os.path.join(save_location, "%s_bertscore" % story),

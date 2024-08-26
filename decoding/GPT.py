@@ -20,7 +20,7 @@ torch.backends.cudnn.enabled = False
 class GPT():
     """wrapper for https://huggingface.co/openai-gpt
     """
-    def __init__(self, path, is_encoder=False, device = 'cpu'):
+    def __init__(self, path, is_encoder=False, device = 'cpu', not_load_model = False):
         path = path.replace("/home", "/Storage2")
         self.device = device
         self.path = path
@@ -30,22 +30,22 @@ class GPT():
         elif path == config.MODELS["original"]:
             with open(os.path.join(config.DATA_LM_DIR, "perceived", "vocab.json"), "r") as f:
                 vocab = json.load(f)
-            self.model = AutoModelForCausalLM.from_pretrained(path).eval().to(self.device)
+            self.model = AutoModelForCausalLM.from_pretrained(path).eval().to("cuda:1") if not not_load_model else None
             self.vocab = vocab
             self.word2id = {w : i for i, w in enumerate(self.vocab)}
             self.UNK_ID = self.word2id['<unk>']
         else:
             if "Llama" in path:
-                self.model = LlamaForCausalLM.from_pretrained(path, device_map="balanced")
-                print(type(self.model))
-                print(hasattr(self.model, "generate"))
-            if "deberta" in path:
-                self.model = AutoModel.from_pretrained(path).to(self.device)
+                # self.model = LlamaForCausalLM.from_pretrained(path, device_map="auto")#.to(self.device)
+                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0") if not not_load_model else None
+            elif "deberta" in path:
+                self.model = AutoModel.from_pretrained(path).to(self.device) if not not_load_model else None
             else:
-                self.model = AutoModelForCausalLM.from_pretrained(path, device_map="balanced")
+                self.model = AutoModelForCausalLM.from_pretrained(path).to(self.device) if not not_load_model else None
             self.tokenizer = AutoTokenizer.from_pretrained(path)
             self.UNK_ID = 0 if self.tokenizer.unk_token is None else self.tokenizer.encode(self.tokenizer.unk_token)[0]
             self.word2id = self.tokenizer.vocab
+        self.device = next(self.model.parameters()).device
 
     def get_wordind2tokind(self, words):
         wordind2tokind = []
@@ -167,22 +167,27 @@ class GPT():
         else:
             tok = self.tokenizer(sentence, return_tensors="pt")
         kwargs = {
-            "input_ids" : tok['input_ids'].to(config.GPT_DEVICE),
-            "attention_mask" : tok['attention_mask'].to(config.GPT_DEVICE),
+            "input_ids" : tok['input_ids'].to(self.device),
+            "attention_mask" : tok['attention_mask'].to(self.device),
             "max_length" : tok['input_ids'].shape[-1] + max_new_tokens,
             "repetition_penalty" : 2.0,
             "num_return_sequences" : num_sample,
             "do_sample" : do_sample,
         }
         if not do_sample:
+            self.model.generation_config.temperature = None
+            self.model.generation_config.top_p = None
             kwargs["diversity_penalty"] = 1.0
             kwargs["num_beam_groups"] = 100
             kwargs["num_beams"] = 100
+        else:
+            self.model.generation_config.temperature = 0.6
+            self.model.generation_config.top_p = 0.9
         if self.path != config.MODELS["original"]:
-            kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
+            # kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
             kwargs["pad_token_id"] = self.tokenizer.eos_token_id
-        outputs = self.model.generate(**kwargs)
-        # outputs = self.model.generate(bad_words_ids=[[128001]], **kwargs)
+        # outputs = self.model.generate(**kwargs)
+        outputs = self.model.generate(bad_words_ids=[[self.tokenizer.eos_token_id]] if self.path != config.MODELS["original"] else [], **kwargs)
         # outputs = self.model.generate(
         #     input_ids=tok['input_ids'].to(config.GPT_DEVICE),
         #     attention_mask=tok['attention_mask'].to(config.GPT_DEVICE),

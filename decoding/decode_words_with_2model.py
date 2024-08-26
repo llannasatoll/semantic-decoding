@@ -51,7 +51,7 @@ if __name__ == "__main__":
     parser.add_argument("--em_llm", type = str, required = True)
     parser.add_argument("--em_id", type = str, required = True)
     parser.add_argument("--wr_id", type = str, required = True)
-    parser.add_argument("--num_chance", type = int, default = 0)
+    parser.add_argument("--num_chance", type = int, default = 100)
     args = parser.parse_args()
 
     test_stories = ['wheretheressmoke']
@@ -82,7 +82,8 @@ if __name__ == "__main__":
     # Load and construct encoding  model
     logger.info("Creating encoding model")
     em_gpt = GPT(path = str(em_data['model_path']), device = config.GPT_DEVICE)
-    em_features = LMFeatures(model = em_gpt, layer = em_data['layer'], context_words = config.GPT_WORDS)
+    em_features = LMFeatures(model = em_gpt, layer = 11, context_words = config.GPT_WORDS)
+    # em_features = LMFeatures(model = em_gpt, layer = em_data['layer'], context_words = config.GPT_WORDS)
     tmp = em_data['corr']
     tmp[tmp < tmp[tmp.argsort()[-config.VOXELS]]] = 0
     vox = [i for i in range(tmp.shape[0]) if tmp[i] != 0]
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     if is_orig:
         max_length = 512 - 50
     else:
-        max_length = min(1000, generate_gpt.tokenizer.model_max_length - 50)
+        max_length = min(100, generate_gpt.tokenizer.model_max_length - 50)
 
     for story in test_stories:
         current_sec = fixed

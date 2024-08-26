@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument("--llm", type = str, required = True)
     parser.add_argument("--em_id", type = str, required = True)
     parser.add_argument("--wr_id", type = str, required = True)
-    parser.add_argument("--num_chance", type = int, default = 0)
+    parser.add_argument("--num_chance", type = int, default = 100)
     args = parser.parse_args()
 
     test_stories = ['wheretheressmoke']
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     if is_orig:
         max_length = 512 - 50
     else:
-        max_length = min(1000, gpt.tokenizer.model_max_length - 50)
+        max_length = min(80, gpt.tokenizer.model_max_length - 50)
 
     for story in test_stories:
         current_sec = fixed

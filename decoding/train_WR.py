@@ -47,7 +47,7 @@ if __name__ == "__main__":
     save_location = os.path.join(config.MODEL_DIR, args.subject)
     os.makedirs(save_location, exist_ok = True)
 
-    gpt = GPT(path = config.MODELS[args.llm], device = config.GPT_DEVICE)
+    gpt = GPT(path = config.MODELS[args.llm], device = config.GPT_DEVICE, not_load_model = True)
     features = LMFeatures(model = gpt, layer = 0, context_words = -1)
 
     wordseqs = get_story_wordseqs(stories)
