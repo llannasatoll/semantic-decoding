@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--id", type = str, required = True)
     parser.add_argument("--llm", type = str, required = True)
+    parser.add_argument("--large", action='store_true')
     parser.add_argument("--candidate", type = int, default = 0)
     args = parser.parse_args()
 
@@ -27,7 +28,7 @@ if __name__ == "__main__":
     tmp_path = os.path.join('/home', 'anna', 'semantic-decoding', 'tmp', 'tmp%d.txt')
 
     for story in test_stories:
-        result = np.load(os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id, "%s_result.npz" % story))
+        result = np.load(os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id, "%s_result.npz" % story).replace("/home", "/Storage2"))
         bertscores = {'f1': [], 'chance': [[] for _ in range(result["chance_em"].shape[-1])]}
         chances = result['chance_stcs']
 
@@ -42,14 +43,15 @@ if __name__ == "__main__":
                     f.write(ref_tmp+'\n')
 
                 idf_sents = np.load(os.path.join(config.DATA_TEST_DIR, "idf_segments.npy"))
-                metric = BERTScorer(
-                    lang = "en",
-                    rescale_with_baseline = False, 
-                    idf = (idf_sents is not None),
-                    idf_sents = idf_sents, 
-                    # model_type = "microsoft/deberta-v2-xxlarge",
-                    # num_layers=44
-                )
+                kwargs = {
+                    "lang": "en",
+                    "rescale_with_baseline": False,
+                    "idf": idf_sents is not None,
+                    "idf_sents": idf_sents
+                }
+                if args.large:
+                    kwargs["model_type"] = "microsoft/deberta-xlarge-mnli"
+                metric = BERTScorer(**kwargs)
                 score_id = 1
                 f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
 
@@ -68,7 +70,7 @@ if __name__ == "__main__":
                     except:
                         bertscores['chance'][j].append(0)
 
-            save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id)
+            save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id).replace("/home", "/Storage2")
             os.makedirs(save_location, exist_ok = True)
             np.savez(os.path.join(save_location, "%s_bertscore" % story),
                 f1 = np.array(bertscores['f1']),

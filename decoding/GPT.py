@@ -37,7 +37,7 @@ class GPT():
         else:
             if "Llama" in path:
                 # self.model = LlamaForCausalLM.from_pretrained(path, device_map="auto")#.to(self.device)
-                self.model = LlamaForCausalLM.from_pretrained(path).to("cpu") if not not_load_model else None
+                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0") if not not_load_model else None
             elif "deberta" in path:
                 self.model = AutoModel.from_pretrained(path).to(self.device) if not not_load_model else None
             else:

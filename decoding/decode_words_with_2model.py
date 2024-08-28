@@ -120,10 +120,34 @@ if __name__ == "__main__":
             begin_words, begin_time = get_beginning_info(str(em_data['model_path']), fixed)
         data_times = np.concatenate([word_seqs[story].data_times[:i][begin_time], np.linspace(fixed, 17, sum(word_rates[:unfixed_tr-1])+1)[:-1]])
 
-        candidate = [[(begin_words, 1)]]
-        reference = [(word_seqs[story].data[:i], 1)]
-        chances = [[(begin_words, 1)] for _ in range(args.num_chance)]
-        for i in range(len(word_rates)-unfixed_tr):
+        save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id))
+        if os.path.exists(save_location + "/%s_result.npz" % story):
+            data = np.load(save_location + "/%s_result.npz" % story)
+            start = len(data["chance_em"])-1
+            logger.info(f"Restart at {start}.")
+            if "perceived" in str(wr_data['model_path']): # which means original
+                strs = [[s.decode().split(" ") for s in data["can_stcs"][jj]] for jj in range(len(data["can_stcs"]))]
+                chance_strs = [[s.decode().split(" ") for s in data["chance_stcs"][jj]] for jj in range(len(data["chance_stcs"]))]
+                data_times = np.concatenate([data_times, ])
+            else: 
+                strs = None
+                chance_strs = None
+            for i in range(start+1):
+                current_sec += 2
+                data_times = np.concatenate([data_times, np.linspace(current_sec, current_sec+2, word_rates[i+unfixed_tr-1]+1)[:-1]])
+            corr = data["can_corr"]
+            candidate = [[(wordlist, r) for wordlist, r in zip(strs[ii], corr[ii])] for ii in range(len(data["can_corr"]))]
+            ref_strs = [s.decode().split(" ") for s in data["ref_stcs"]]
+            ref_corr = data["ref_corr"]
+            reference = [(wordlist, r) for wordlist, r in zip(ref_strs, ref_corr)]
+            chance_corr = [data["chance_em"][:, ii] for ii in range(data["chance_em"].shape[-1])]
+            chances = [[(wordlist, r) for wordlist, r in zip(chance_strs[ii], chance_corr[ii])] for ii in range(len(chance_corr))]
+        else:
+            candidate = [[(begin_words, 1)]]
+            reference = [(word_seqs[story].data[:i], 1)]
+            chances = [[(begin_words, 1)] for _ in range(args.num_chance)]
+            start = 0
+        for i in range(start, len(word_rates)-unfixed_tr):
             logger.info(f'{i}/{len(word_rates)-unfixed_tr}')
             current_sec += 2
             data_times = np.concatenate([
@@ -147,6 +171,7 @@ if __name__ == "__main__":
                         logger.warning(f'lack of num words: {len(tmp)} != {num_words}')
                     del_mat = get_stim_from_wordslist(words+tmp, em_features, data_times, list(range(current_sec-(fixed-11), current_sec+(19-fixed)+1, 2)), mark=blank)
                     pred = clf.predict(del_mat[-1].reshape(1, -1))[0]
+                    # `res[i]` is list of tuple of words list and correlation. len(res) is config.EXTENSIONS*config.WIDTH.
                     res.append(words_corr_list + [(tmp[:word_rates[i]], pearsonr(pred, resp_test[i])[0])])
 
             for chance in chances:
@@ -165,7 +190,7 @@ if __name__ == "__main__":
                 pred = clf.predict(del_mat[-1].reshape(1, -1))[0]
                 chance.append((tmp[:word_rates[i]], pearsonr(pred, resp_test[i])[0]))
 
-            candidate = sorted(res, key=lambda x: x[-1][1])[::-1][:config.EXTENSIONS]
+            candidate = sorted(res, key=lambda x: x[-1][1])[::-1][:config.EXTENSIONS] # sort by pearson where is [1]. [::-1] means DECENT.
             ref_corr = pearsonr(clf.predict(wordvec_test[i].reshape(1, -1))[0], resp_test[i])[0]
             reference.append((
                 list(np.array(word_seqs[story].data)[(word_seqs[story].data_times < current_sec) & (word_seqs[story].data_times >= current_sec-(17-fixed))]),
@@ -174,7 +199,6 @@ if __name__ == "__main__":
             logger.info([can[-1] for can in candidate])
             logger.info(reference[-1])
 
-            save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id))
             os.makedirs(save_location, exist_ok = True)
             np.savez(os.path.join(save_location, "%s_result" % story),
                 can_stcs=np.array([list(map(lambda x: blank.join(x[0]).encode(), candidate[i])) for i in range(config.EXTENSIONS)]),

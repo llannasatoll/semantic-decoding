@@ -44,7 +44,7 @@ def get_embedding(stories, embedmodel, tr_stats = False):
     # return  ds_mat
     # return  np.roll(del_mat, 1, axis=0)
 
-def get_stim(stories, features, tr_stats = None, old_tokeni=True):
+def get_stim(stories, features, tr_stats = None, old_tokeni=True, use_embedding = False):
     """extract quantitative features of stimulus stories
     """
     if features.model.path == 'eng1000':
@@ -55,6 +55,10 @@ def get_stim(stories, features, tr_stats = None, old_tokeni=True):
             word_vecs, wordind2tokind = {}, {}
             for story in stories:
                 word_vecs[story], wordind2tokind[story] =  features.make_stim(word_seqs[story].data, old_tokeni=old_tokeni)
+                if use_embedding:
+                    context = 10
+                    id_ = "embedding_" + "context" + str(context)
+                    word_vecs[story] = np.load(os.path.join(config.DATA_TRAIN_DIR, 'train_stimulus', id_, "text-embedding-3-large", f"{story}.npy"))
         else:
             wordind2tokind = {story: features.model.get_wordind2tokind(get_punc_script(story)) for story in stories}
             word_vecs = {story : features.make_stim(get_punc_script(story), mark = ' ') for story in stories}
@@ -70,7 +74,7 @@ def get_stim(stories, features, tr_stats = None, old_tokeni=True):
     else:
         r_mean, r_std = tr_stats
     ds_mat = np.nan_to_num(np.dot((ds_mat - r_mean), np.linalg.inv(np.diag(r_std))))
-    if "Llama" in features.model.path or "opt-13b" in features.model.path:
+    if ("Llama" in features.model.path or "opt-13b" in features.model.path) or use_embedding:
         if len(stories) > 1:
             pca.fit(ds_mat)
         ds_mat = pca.transform(ds_mat)

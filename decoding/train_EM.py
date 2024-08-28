@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
     parser.add_argument("--llm", type = str, required = True)
-    parser.add_argument("--layer", type = int, required = True)
+    parser.add_argument("--layer", type = int, default = 0)
     parser.add_argument("--embedding", action='store_true')
     parser.add_argument("--encoder", action='store_true')
     parser.add_argument("--sessions", nargs = "+", type = int, 
@@ -41,11 +41,11 @@ if __name__ == "__main__":
     test_stories = ['wheretheressmoke']
 
     if args.embedding:
-        logger.info(f"Get embedding : {config.MODELS[args.llm]}")
-        rstim = get_embedding(stories, config.MODELS[args.llm])
-        pstim = get_embedding(test_stories, config.MODELS[args.llm])
-        rstim = (rstim - rstim.mean(axis=0)) / rstim.std(axis=0)
-        pstim = (pstim - rstim.mean(axis=0)) / rstim.std(axis=0)
+        logger.info(f"Get embedding")
+        gpt = GPT(path = config.MODELS["original"], device = config.GPT_DEVICE, is_encoder=args.encoder) # original because of not using tokenizer, but split by blank
+        features = LMFeatures(model = gpt, layer = 0, context_words = -1)
+        rstim, tr_stats = get_stim(stories, features, use_embedding = True)
+        pstim, tr_stats = get_stim(test_stories, features, use_embedding = True)
     else:
         # load gpt
         gpt = GPT(path = config.MODELS[args.llm], device = config.GPT_DEVICE, is_encoder=args.encoder)

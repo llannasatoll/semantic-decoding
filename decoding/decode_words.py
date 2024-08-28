@@ -113,9 +113,9 @@ if __name__ == "__main__":
             begin_words, begin_time = get_beginning_info(str(em_data['model_path']), fixed)
         data_times = np.concatenate([word_seqs[story].data_times[:i][begin_time], np.linspace(fixed, 17, sum(word_rates[:unfixed_tr-1])+1)[:-1]])
 
-        save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id), "%s_result.npz" % story)
-        if save_location:
-            data = np.load(save_location)
+        save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id))
+        if os.path.exists(save_location + "/%s_result.npz" % story):
+            data = np.load(save_location + "/%s_result.npz" % story)
             start = len(data["chance_em"])-1
             logger.info(f"Restart at {start}.")
             if "Llama" in str(em_data['model_path']):
@@ -136,15 +136,15 @@ if __name__ == "__main__":
             ref_strs = [s.decode().split(" ") for s in data["ref_stcs"]]
             ref_corr = data["ref_corr"]
             reference = [(wordlist, r) for wordlist, r in zip(ref_strs, ref_corr)]
-            chance_corr = [data["chance_em"][:, ii] for ii in range(len(data["chance_em"].shape[-1]))]
-            chances = [[(wordlist, r) for wordlist, r in zip(chance_strs[ii], chance_corr[ii])] for ii in range(len(data["chance_corr"]))]
+            chance_corr = [data["chance_em"][:, ii] for ii in range(data["chance_em"].shape[-1])]
+            chances = [[(wordlist, r) for wordlist, r in zip(chance_strs[ii], chance_corr[ii])] for ii in range(len(chance_corr))]
         else:
             candidate = [[(begin_words, 1)]]
             reference = [(word_seqs[story].data[:i], 1)]
             chances = [[(begin_words, 1)] for _ in range(args.num_chance)]
             start = 0
         for i in range(start, len(word_rates)-unfixed_tr):
-            logger.info(f'{i}/{start-unfixed_tr}')
+            logger.info(f'{i}/{len(word_rates)-unfixed_tr}')
             current_sec += 2
             data_times = np.concatenate([
                 data_times, 
