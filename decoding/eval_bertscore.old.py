@@ -1,11 +1,10 @@
 import os
 import sys
-import pickle
 import logging
-import subprocess
 import argparse
 import numpy as np
 from tqdm import tqdm
+from bert_score import BERTScorer
 
 import config
 
@@ -19,39 +18,51 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", type = str, required = True)
-    parser.add_argument("--decode_res_id", type = str, required = True)
+    parser.add_argument("--id", type = str, required = True)
     parser.add_argument("--candidate", type = int, default = 0)
     args = parser.parse_args()
 
     test_stories = ['wheretheressmoke']
+    tmp_path = os.path.join('/home', 'anna', 'semantic-decoding', 'tmp', 'tmp%d.txt')
     for story in test_stories:
-        with open(os.path.join(config.RESULT_DIR, args.subject, 'decoding', f'{args.decode_res_id}.pickle'), 'rb') as f:
-            candidate = list(map(lambda x: x[0], pickle.load(f)[args.candidate]))
-        with open(os.path.join(config.RESULT_DIR, args.subject, 'decoding', 'reference', story, f'{args.decode_res_id}.pickle'), 'rb') as f:
-            reference = list(map(lambda x: x[0], pickle.load(f)))
+        result = np.load(os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id, "%s_result.npz" % story))
+        bertscores = {'f1': [], 'chance': [[] for _ in range(result["chance_em"].shape[-1])]}
+        chances = result['chance_stcs']
 
-        assert len(candidate) == len(reference)
-
-        res = []
-        for i in tqdm(range(len(candidate))):
-            can_tmp = ''.join(candidate[max(0,i-5):i+5]).replace('\n', '')
-            ref_tmp = ' '.join(reference[max(0,i-5):i+5]).replace('\n', '')
-
-            with open('tmp1.txt', 'w') as f:
+        for i in tqdm(range(len(result['ref_corr'])-1)):
+            can_tmp = ''.join([stc.decode() for stc in result['can_stcs'][args.candidate][1:][max(0,i-5):i+5]]).replace('\n', '').replace('<|begin_of_text|>', '')
+            ref_tmp = ' '.join([stc.decode() for stc in result['ref_stcs'][1:][max(0,i-5):i+5]]).replace('\n', '')
+            with open(tmp_path%1, 'w') as f:
                 f.write(can_tmp+'\n')
-            with open('tmp2.txt', 'w') as f:
+            with open(tmp_path%2, 'w') as f:
                 f.write(ref_tmp+'\n')
-            cmd = ['bert-score', '--lang', 'en', '--rescale_with_baseline', '--model', 'microsoft/deberta-xlarge-mnli', \
-            '--num_layers', '40', '-r', 'tmp1.txt', '-c', 'tmp2.txt']
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            tmp = result.stdout.split('rescaled_fast-tokenizer ')[-1].replace('P: ','').replace('R: ','').replace('F1: ','').split()
-            assert len(tmp) == 3
-            res.append(tmp)
 
-        save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "bertscore")
+            idf_sents = np.load(os.path.join(config.DATA_TEST_DIR, "idf_segments.npy"))
+            metric = BERTScorer(lang = "en", rescale_with_baseline = False, idf = (idf_sents is not None), idf_sents = idf_sents)
+            score_id = 1
+            f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
+
+            bertscores['f1'].append(f1_tmp)
+            logger.info(ref_tmp)
+            logger.info(f"[CAND] {f1_tmp}: {can_tmp}")
+                
+            for j in range(len(chances)):
+                can_tmp = ''.join(list(map(lambda x: x.decode(), chances[j][1:][max(0,i-5):i+5]))).replace('\n', '')
+                with open(tmp_path%1, 'w') as f:
+                    f.write(can_tmp+'\n')
+                stdout = ''
+                f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]
+                try:
+                    if stdout != '': f1_tmp = float(stdout.split('F1: ')[-1])
+                    logger.info(f"{f1_tmp}, {can_tmp}")
+                    bertscores['chance'][j].append(f1_tmp)
+                except:
+                    if stdout != '': logger.warning(f"WARNING: Could not extract the score from {stdout}, {can_tmp}")
+                    bertscores['chance'][j].append(0)
+
+        save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id)
         os.makedirs(save_location, exist_ok = True)
-        np.savez(os.path.join(save_location, args.decode_res_id),
-            precision = list(map(lambda x:float(x[0]), res)), \
-            recall = list(map(lambda x:float(x[1]), res)), \
-            f1 = list(map(lambda x:float(x[2]), res))
-            )
+        np.savez(os.path.join(save_location, "%s_bertscore_original" % story),
+            f1 = np.array(bertscores['f1']),
+            chance_f1 = np.array(bertscores['chance'])
+        )

@@ -82,8 +82,8 @@ if __name__ == "__main__":
     # Load and construct encoding  model
     logger.info("Creating encoding model")
     em_gpt = GPT(path = str(em_data['model_path']), device = config.GPT_DEVICE)
-    em_features = LMFeatures(model = em_gpt, layer = 11, context_words = config.GPT_WORDS)
-    # em_features = LMFeatures(model = em_gpt, layer = em_data['layer'], context_words = config.GPT_WORDS)
+    # em_features = LMFeatures(model = em_gpt, layer = 11, context_words = config.GPT_WORDS)
+    em_features = LMFeatures(model = em_gpt, layer = em_data['layer'], context_words = config.GPT_WORDS)
     tmp = em_data['corr']
     tmp[tmp < tmp[tmp.argsort()[-config.VOXELS]]] = 0
     vox = [i for i in range(tmp.shape[0]) if tmp[i] != 0]
@@ -128,11 +128,11 @@ if __name__ == "__main__":
             if "perceived" in str(wr_data['model_path']): # which means original
                 strs = [[s.decode().split(" ") for s in data["can_stcs"][jj]] for jj in range(len(data["can_stcs"]))]
                 chance_strs = [[s.decode().split(" ") for s in data["chance_stcs"][jj]] for jj in range(len(data["chance_stcs"]))]
-                data_times = np.concatenate([data_times, ])
+                # data_times = np.concatenate([data_times, ])
             else: 
                 strs = None
                 chance_strs = None
-            for i in range(start+1):
+            for i in range(start):
                 current_sec += 2
                 data_times = np.concatenate([data_times, np.linspace(current_sec, current_sec+2, word_rates[i+unfixed_tr-1]+1)[:-1]])
             corr = data["can_corr"]

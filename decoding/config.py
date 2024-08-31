@@ -3,9 +3,9 @@ import numpy as np
 import socket
 
 HOSTNAME = socket.gethostname() 
-gpu_device = "1"
-print("GPU DEVICE NO: ", gpu_device)
-os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
+# gpu_device = "0"
+# os.environ['CUDA_VISIBLE_DEVICES'] = gpu_device
+print("GPU DEVICE NO: ", os.environ['CUDA_VISIBLE_DEVICES'] )
 
 # paths
 
@@ -26,7 +26,7 @@ SCORE_DIR = os.path.join(REPO_DIR, "scores")
 
 TRIM = 5
 STIM_DELAYS = [1, 2, 3, 4]
-STIM_DELAYS = [2, 3, 4, 5]
+# STIM_DELAYS = [2, 3, 4, 5]
 RESP_DELAYS = [-4, -3, -2, -1]
 ALPHAS = np.logspace(4, 8, 17)
 NBOOTS = 15
@@ -62,6 +62,7 @@ MODELS = {
     'eng1000' : 'eng1000',
     'gpt2' : 'openai-community/gpt2',
     'llama3' : 'meta-llama/Meta-Llama-3-8B',
+    'llama3.1' : 'meta-llama/Meta-Llama-3.1-8B',
     'embed_small' : 'text-embedding-3-small',
     'embed_large' : 'text-embedding-3-large',
     'original' : os.path.join(os.path.join(REPO_DIR, "data_lm"), "perceived", "model"),

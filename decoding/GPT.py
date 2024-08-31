@@ -30,18 +30,21 @@ class GPT():
         elif path == config.MODELS["original"]:
             with open(os.path.join(config.DATA_LM_DIR, "perceived", "vocab.json"), "r") as f:
                 vocab = json.load(f)
-            self.model = AutoModelForCausalLM.from_pretrained(path).eval().to("cpu") if not not_load_model else None
+            self.model = AutoModelForCausalLM.from_pretrained(path).eval().to("cuda:0") if not not_load_model else None
             self.vocab = vocab
             self.word2id = {w : i for i, w in enumerate(self.vocab)}
             self.UNK_ID = self.word2id['<unk>']
         else:
-            if "Llama" in path:
-                # self.model = LlamaForCausalLM.from_pretrained(path, device_map="auto")#.to(self.device)
-                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0") if not not_load_model else None
+            if not_load_model:
+                self.model = None
+            elif "Llama" in path:
+                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0")
             elif "deberta" in path:
-                self.model = AutoModel.from_pretrained(path).to(self.device) if not not_load_model else None
+                self.model = AutoModel.from_pretrained(path).to(self.device)
+            elif "opt-13b" in path:
+                self.model = AutoModelForCausalLM.from_pretrained(path, device_map="balanced")
             else:
-                self.model = AutoModelForCausalLM.from_pretrained(path).to(self.device) if not not_load_model else None
+                self.model = AutoModelForCausalLM.from_pretrained(path).to(self.device)
             self.tokenizer = AutoTokenizer.from_pretrained(path)
             self.UNK_ID = 0 if self.tokenizer.unk_token is None else self.tokenizer.encode(self.tokenizer.unk_token)[0]
             self.word2id = self.tokenizer.vocab
