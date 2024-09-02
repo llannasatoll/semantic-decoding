@@ -43,7 +43,7 @@ NM_ALPHA = 2/3
 LM_TIME = 8
 LM_MASS = 0.9
 LM_RATIO = 0.1
-EXTENSIONS = 5
+EXTENSIONS = 10
 
 # evaluation parameters
 

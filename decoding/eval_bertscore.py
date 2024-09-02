@@ -33,19 +33,12 @@ if __name__ == "__main__":
     kwargs = {
         "lang": "en",
         "rescale_with_baseline": False,
-        "idf": (idf_sents is not None),
-        "idf_sents": idf_sents
+        # "idf": (idf_sents is not None),
+        # "idf_sents": idf_sents
     }
     if args.large:
         kwargs["model_type"] = "microsoft/deberta-xlarge-mnli"
-    metric = BERTScorer(
-        lang = "en",
-        rescale_with_baseline = False, 
-        idf = (idf_sents is not None),
-        idf_sents = idf_sents, 
-        # model_type = "microsoft/deberta-v2-xxlarge",
-        # num_layers=44
-    )
+    metric = BERTScorer(**kwargs)
     score_id = 1
     for story in test_stories:
         save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", args.id).replace("/home", "/Storage2")
@@ -66,9 +59,9 @@ if __name__ == "__main__":
             # for i in tqdm(range(10)):
             for i in tqdm(range(len(result['ref_corr'])-1)):
                 current_sec += 2
-                can_tmp = blank.join([stc.decode() for stc in result['can_stcs'][args.candidate][1:][max(0,i-5):i+5]]).replace('\n', '').replace('<|begin_of_text|>', '')
-                ref_tmp = ' '.join(list(np.array(word_seqs[story].data)[(word_seqs[story].data_times < current_sec+10) & (word_seqs[story].data_times >= max(fixed, current_sec-10))]))
-                # ref_tmp = ' '.join([stc.decode() for stc in result['ref_stcs'][1:][max(0,i-5):i+5]]).replace('\n', '')
+                can_tmp = blank.join([stc.decode() for stc in result['can_stcs'][args.candidate][1:][max(0,i-5):i+5]]).replace('\n', '').replace('<|begin_of_text|>', '').replace("<unk> ", "")
+                # ref_tmp = ' '.join(list(np.array(word_seqs[story].data)[(word_seqs[story].data_times < current_sec+10) & (word_seqs[story].data_times >= max(fixed, current_sec-10))]))
+                ref_tmp = ' '.join([stc.decode() for stc in result['ref_stcs'][1:][max(0,i-5):i+5]]).replace('\n', '')
                 with open(tmp_path%1, 'w') as f:
                     f.write(can_tmp+'\n')
                 with open(tmp_path%2, 'w') as f:
@@ -81,7 +74,7 @@ if __name__ == "__main__":
                 logger.info(f"[CAND] {f1_tmp}: {can_tmp}")
 
                 for j in range(len(chances)):
-                    can_tmp = blank.join(list(map(lambda x: x.decode(), chances[j][1:][max(0,i-5):i+5]))).replace('\n', '')
+                    can_tmp = blank.join(list(map(lambda x: x.decode(), chances[j][1:][max(0,i-5):i+5]))).replace('\n', '').replace("<unk> ", "")
                     with open(tmp_path%1, 'w') as f:
                         f.write(can_tmp+'\n')
                     f1_tmp = metric.score(cands = [can_tmp], refs = [ref_tmp])[score_id].numpy()[0]

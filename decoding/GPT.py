@@ -27,7 +27,7 @@ class GPT():
         self.is_encoder = is_encoder
         if path == 'eng1000':
             pass
-        elif path == config.MODELS["original"]:
+        if "perceived" in self.path:
             with open(os.path.join(config.DATA_LM_DIR, "perceived", "vocab.json"), "r") as f:
                 vocab = json.load(f)
             self.model = AutoModelForCausalLM.from_pretrained(path).eval().to("cuda:0") if not not_load_model else None
@@ -38,7 +38,8 @@ class GPT():
             if not_load_model:
                 self.model = None
             elif "Llama" in path:
-                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0")
+                self.model = LlamaForCausalLM.from_pretrained(path, device_map="balanced")
+                # self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0")
             elif "deberta" in path:
                 self.model = AutoModel.from_pretrained(path).to(self.device)
             elif "opt-13b" in path:
@@ -77,7 +78,7 @@ class GPT():
     def encode(self, words, mark = ' ', old_tokeni=True):
         """map from words to ids
         """
-        if self.path == config.MODELS["original"]:
+        if "perceived" in self.path:
             ids = [self.word2id[x] if x in self.word2id else self.UNK_ID for x in words]
             return ids, list(range(len(words)))
 
@@ -164,7 +165,7 @@ class GPT():
 
     def generate(self, sentence, max_new_tokens, num_sample, do_sample=False):
         if self.is_encoder: raise()
-        if self.path == config.MODELS["original"]:
+        if "perceived" in self.path:
             tok = {'input_ids': torch.tensor(self.encode(sentence.split(" "))[0]).reshape(1,-1)}
             tok['attention_mask'] = torch.ones_like(tok["input_ids"])
         else:
@@ -184,13 +185,13 @@ class GPT():
             kwargs["num_beam_groups"] = 100
             kwargs["num_beams"] = 100
         else:
-            self.model.generation_config.temperature = 0.6
-            self.model.generation_config.top_p = 0.9
-        if self.path != config.MODELS["original"]:
+            self.model.generation_config.temperature = 1.1
+            self.model.generation_config.top_p = 1.0
+        if not "perceived" in self.path:
             # kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
             kwargs["pad_token_id"] = self.tokenizer.eos_token_id
         # outputs = self.model.generate(**kwargs)
-        if self.path != config.MODELS["original"]:
+        if not "perceived" in self.path:
             outputs = self.model.generate(bad_words_ids=[[self.tokenizer.eos_token_id]], **kwargs)
         else:
             outputs = self.model.generate(**kwargs)

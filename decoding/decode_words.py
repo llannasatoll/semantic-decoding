@@ -112,7 +112,6 @@ if __name__ == "__main__":
         for i in range(len(word_seqs[story].data_times)):
             if word_seqs[story].data_times[i] > fixed: break
         if is_orig:
-            raise()
             # begin_words = word_seqs[story].data[:i]
             # begin_time = list(range(len(begin_words)))
             begin_words = []
@@ -122,8 +121,8 @@ if __name__ == "__main__":
         data_times = np.concatenate([word_seqs[story].data_times[:i][begin_time], np.linspace(fixed, 17, sum(word_rates[:unfixed_tr-1])+1)[:-1]])
 
         save_location = os.path.join(config.RESULT_DIR, args.subject, "decoding", "em%s_wr%s" % (args.em_id, args.wr_id))
-        if os.path.exists(save_location + "/%s_result_%d" % (story, args.num_chance)):
-            data = np.load(save_location + "/%s_result_%d" % (story, args.num_chance))
+        if os.path.exists(save_location + "/%s_result_%d" % (story, args.num_chance) + ".npz"):
+            data = np.load(save_location + "/%s_result_%d" % (story, args.num_chance) + ".npz")
             start = len(data["chance_em"])-1
             logger.info(f"Restart at {start}.")
             if "Llama" in str(em_data['model_path']):
@@ -167,14 +166,14 @@ if __name__ == "__main__":
                 words = []
                 for ws, _ in words_corr_list:
                     words.extend(ws)
-                outputs = generate_gpt.generate(blank.join(words[-max_length:]), num_words, config.WIDTH)
+                outputs = generate_gpt.generate(blank.join(words[-max_length:]), num_words, config.WIDTH, do_sample=True)
                 num_oldtok = (len(words[-max_length:]) if len(words_corr_list) > 1 else 1) if is_orig else len(generate_gpt.tokenizer.encode(blank.join(words[-max_length:])))
                 for ii, sample_output in enumerate(outputs):
                     tmp = [generate_gpt.vocab[x] if x < len(generate_gpt.vocab) else '<unk>' for x in sample_output[num_oldtok:]] \
                         if is_orig else [generate_gpt.tokenizer.decode(t, skip_special_tokens=True) for t in sample_output[num_oldtok:]]
                     if len(tmp) != num_words:
                         logger.warning(f'lack of num words: {len(tmp)} != {num_words}')
-                    del_mat = get_stim_from_wordslist(words+tmp, em_features, data_times, list(range(current_sec-(fixed-11), current_sec+(19-fixed)+1, 2)))
+                    del_mat = get_stim_from_wordslist(words+tmp, em_features, data_times, list(range(current_sec-(fixed-11), current_sec+(19-fixed)+1, 2)), mark=blank)
                     pred = clf.predict(del_mat[-1].reshape(1, -1))[0]
                     # `res[i]` is list of tuple of words list and correlation. len(res) is config.EXTENSIONS*config.WIDTH.
                     res.append(words_corr_list + [(tmp[:word_rates[i]], pearsonr(pred, resp_test[i])[0])])
@@ -183,6 +182,7 @@ if __name__ == "__main__":
                 words = []
                 for ws, _ in chance:
                     words.extend(ws)
+                # outputs = generate_gpt.generate(blank.join(words[-max_length:]), num_words, 1)[0]
                 outputs = generate_gpt.generate(blank.join(words[-max_length:]), num_words, 1, do_sample=True)[0]
                 num_oldtok = (len(words[-max_length:]) if len(words_corr_list) > 1 else 1) if is_orig else len(generate_gpt.tokenizer.encode(blank.join(words[-max_length:])))
                 tmp = [generate_gpt.vocab[x] if x < len(generate_gpt.vocab) else '<unk>' for x in outputs[num_oldtok:]] \
@@ -190,7 +190,7 @@ if __name__ == "__main__":
                 if len(tmp) != num_words:
                     logger.warning(f'lack of num words (chance): {len(tmp)} != {num_words}')
                     logger.warning(tmp)
-                del_mat = get_stim_from_wordslist(words+tmp, em_features, data_times, list(range(current_sec-(fixed-11), current_sec+(19-fixed)+1, 2)))
+                del_mat = get_stim_from_wordslist(words+tmp, em_features, data_times, list(range(current_sec-(fixed-11), current_sec+(19-fixed)+1, 2)), mark=blank)
                 pred = clf.predict(del_mat[-1].reshape(1, -1))[0]
                 chance.append((tmp[:word_rates[i]], pearsonr(pred, resp_test[i])[0]))
 
