@@ -83,7 +83,7 @@ class LMFeatures():
         embs = self.model.get_hidden(context_array, layer = self.layer)
         return embs[:, len(contexts[0]) - 1]
 
-    def make_stim(self, words, mark = ' ', old_tokeni=True):
+    def make_stim(self, words, mark = ' ', old_tokeni=True, decode=False):
         """outputs matrix of features corresponding to the stimulus words
         """
         context_array, wordind2tokind, embs = self.model.get_story_array_and_hidden(
@@ -99,6 +99,8 @@ class LMFeatures():
         if self.model.is_encoder:
             assert old_tokeni
             return embs[:, 0], wordind2tokind
+        elif decode:
+            return embs[:, -1], wordind2tokind
         elif old_tokeni:
             return np.vstack([embs[0, :self.context_words],
                 embs[:context_array.shape[0] - self.context_words, self.context_words]]), wordind2tokind

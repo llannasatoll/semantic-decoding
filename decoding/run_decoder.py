@@ -38,8 +38,7 @@ if __name__ == "__main__":
         gpt_vocab = json.load(f)
     with open(os.path.join(config.DATA_LM_DIR, "decoder_vocab.json"), "r") as f:
         decoder_vocab = json.load(f)
-    model_path = 'openai-community/openai-gpt'
-    gpt = GPT(path = model_path, vocab = gpt_vocab, device = config.GPT_DEVICE)
+    gpt = GPT(path = os.path.join(config.DATA_LM_DIR, gpt_checkpoint, "model"), vocab = gpt_vocab, device = config.GPT_DEVICE)
     features = LMFeatures(model = gpt, layer = config.GPT_LAYER, context_words = config.GPT_WORDS)
     lm = LanguageModel(gpt, decoder_vocab, nuc_mass = config.LM_MASS, nuc_ratio = config.LM_RATIO)
 

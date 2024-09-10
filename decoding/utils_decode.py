@@ -11,7 +11,7 @@ from utils_resp import get_resp
 from utils_ridge.util import make_delayed
 from utils_ridge.interpdata import lanczosinterp2D
 
-def get_wr_feature_pair(subject, stories, features, roi):
+def get_wr_feature_pair(subject, stories, features, roi, is_shuffle=True):
     with open(os.path.join(config.DATA_TRAIN_DIR, "ROIs", "%s.json" % subject), "r") as f:
         vox = json.load(f)
     wordseqs = get_story_wordseqs(stories)
@@ -28,9 +28,11 @@ def get_wr_feature_pair(subject, stories, features, roi):
 
     resp = get_resp(subject, stories, stack = True, vox = vox[roi])
     delresp = make_delayed(resp, config.RESP_DELAYS)
-    ind = get_shuffled_ind(rate.shape[0], config.CHUNKLEN)
-
-    return delresp[ind], rate[ind], mean_rate
+    if is_shuffle:
+        ind = get_shuffled_ind(rate.shape[0], config.CHUNKLEN)
+        return delresp[ind], rate[ind], mean_rate
+    else:
+        return delresp, rate, mean_rate
 
 def get_em_feature_pair(subject, stories, features, vox):
     rstim, tr_stats = get_stim(stories, features)
@@ -50,9 +52,10 @@ def get_shuffled_ind(resplen, chunklen):
     return shuffled_inds
 
 def get_stim_from_wordslist(wordslist, features, data_times, tr_time, tr_stats = None, mark = ""):
-    word_mat, wordind2tokind = features.make_stim(wordslist, old_tokeni=True, mark = mark)
+    word_mat, wordind2tokind = features.make_stim(wordslist, old_tokeni=True, mark=mark, decode=True)
     try:
-        ds_mat = lanczosinterp2D(word_mat, data_times[wordind2tokind], tr_time)
+        ds_mat = lanczosinterp2D(word_mat, data_times, tr_time)
+        # ds_mat = lanczosinterp2D(word_mat, data_times[wordind2tokind], tr_time)
     except:
         print("wordslist :", wordslist)
         print("len(data_times) :", len(data_times))

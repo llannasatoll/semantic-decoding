@@ -38,8 +38,8 @@ class GPT():
             if not_load_model:
                 self.model = None
             elif "Llama" in path:
-                self.model = LlamaForCausalLM.from_pretrained(path, device_map="balanced")
-                # self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0")
+                # self.model = LlamaForCausalLM.from_pretrained(path, device_map="balanced")
+                self.model = LlamaForCausalLM.from_pretrained(path).to("cuda:0")
             elif "deberta" in path:
                 self.model = AutoModel.from_pretrained(path).to(self.device)
             elif "opt-13b" in path:
@@ -191,20 +191,21 @@ class GPT():
             # kwargs["bad_words_ids"] = [[self.tokenizer.eos_token_id]],
             kwargs["pad_token_id"] = self.tokenizer.eos_token_id
         # outputs = self.model.generate(**kwargs)
-        if not "perceived" in self.path:
-            outputs = self.model.generate(bad_words_ids=[[self.tokenizer.eos_token_id]], **kwargs)
-        else:
-            outputs = self.model.generate(**kwargs)
-        # outputs = self.model.generate(
-        #     input_ids=tok['input_ids'].to(config.GPT_DEVICE),
-        #     attention_mask=tok['attention_mask'].to(config.GPT_DEVICE),
-        #     max_length=tok['input_ids'].shape[-1] + max_new_tokens,
-        #     repetition_penalty=2.0,
-        #     num_return_sequences=num_sample,
-        #     do_sample=do_sample,
-        #     bad_words_ids=[[128001]],
-        #     pad_token_id=self.tokenizer.eos_token_id
-        # )
+        # if not "perceived" in self.path:
+        #     outputs = self.model.generate(bad_words_ids=[[self.tokenizer.eos_token_id]], **kwargs)
+        # else:
+        #     outputs = self.model.generate(**kwargs)
+        outputs = self.model.generate(
+            input_ids=tok['input_ids'].to(self.device),
+            attention_mask=tok['attention_mask'].to(self.device),
+            max_length=tok['input_ids'].shape[-1] + max_new_tokens,
+            repetition_penalty=2.0,
+            num_return_sequences=num_sample,
+            do_sample=do_sample,
+            num_beams=num_sample,
+            num_beam_groups=num_sample,
+            diversity_penalty=1.0,
+        )
         return outputs
 
     def get_story_array(self, words, context_words, mark=' ', old_tokeni=True):

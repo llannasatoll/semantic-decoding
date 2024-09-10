@@ -26,7 +26,6 @@ SCORE_DIR = os.path.join(REPO_DIR, "scores")
 
 TRIM = 5
 STIM_DELAYS = [1, 2, 3, 4]
-# STIM_DELAYS = [2, 3, 4, 5]
 RESP_DELAYS = [-4, -3, -2, -1]
 ALPHAS = np.logspace(4, 8, 17)
 NBOOTS = 15
@@ -38,7 +37,7 @@ GPT_WORDS = 20
 # decoder parameters
 
 RANKED = True
-WIDTH = 100
+WIDTH = 30
 NM_ALPHA = 2/3
 LM_TIME = 8
 LM_MASS = 0.9
